@@ -3,6 +3,8 @@
 #include "Rating.h"
 #include "User.h"
 #include <cassert>
+#include <cmath>
+#include <limits>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -61,6 +63,19 @@ int main()
     assert(checkFile<User>("data/users.dat") == 6040);
     assert(checkFile<Movie>("data/movies.dat") == 3883);
     assert(checkFile<Rating>("data/ratings.dat") == 1000209);
+    // Unsorted input, a gap in movie IDs, proportional rows, and disjoint users.
+    const MovieRatingsCSR matrix({Rating(2, 3, 2, 0), Rating(1, 1, 3, 0),
+                                  Rating(3, 4, 5, 0), Rating(2, 1, 3, 0),
+                                  Rating(1, 3, 2, 0), Rating(1, 5, 5, 0)});
+    assert(matrix.nonzeroCount() == 6);
+    assert(std::abs(matrix.cosineSimilarity(1, 3) - 1.0) < 1e-12);
+    assert(std::abs(matrix.cosineSimilarity(1, 5) - 1.0 / std::sqrt(2.0)) < 1e-12);
+    assert(matrix.cosineSimilarity(1, 4) == 0);
+    assert(matrix.cosineSimilarity(1, 2) == 0);
+    assert(matrix.cosineSimilarity(2, 2) == 0);
+    assert(MovieRatingsCSR({}).cosineSimilarity(1, 1) == 0);
+    rejects([] { MovieRatingsCSR duplicate({Rating(1, 1, 3, 0), Rating(1, 1, 4, 1)}); });
+
     const MovieDatabase database;
     assert(database.getUsers().size() == 6040);
     assert(database.getMovies().size() == 3883);
@@ -71,6 +86,31 @@ int main()
     assert(!database.findMovieById(0));
     assert(!database.findMovieById(3953));
     assert(!database.findMovieById(91)); // A gap in the MovieLens IDs.
+    assert(!database.recommendMovie(91));
+    assert(!database.recommendMovie(0));
+    const Movie* recommendation = database.recommendMovie(1);
+    assert(recommendation && recommendation->getMovieId() != 1);
+
+    // Independent calculation from ratings, without CSR row traversal.
+    std::vector<double> target(6041, 0), dot(3953, 0), norm(3953, 0);
+    for (const auto& r : database.getRatings())
+        if (r.getMovieId() == 1) target[r.getUserId()] = r.getRating();
+    for (const auto& r : database.getRatings()) {
+        dot[r.getMovieId()] += target[r.getUserId()] * r.getRating();
+        norm[r.getMovieId()] += r.getRating() * r.getRating();
+    }
+    double bestScore = 0;
+    int bestId = std::numeric_limits<int>::max();
+    for (const auto& m : database.getMovies()) {
+        int id = m.getMovieId();
+        if (id == 1 || norm[id] == 0) continue;
+        double score = dot[id] / (std::sqrt(norm[1]) * std::sqrt(norm[id]));
+        if (score > bestScore || (score == bestScore && score > 0 && id < bestId)) {
+            bestScore = score;
+            bestId = id;
+        }
+    }
+    assert(recommendation->getMovieId() == bestId);
     bool missingDirectory = false;
     try {
         MovieDatabase missing("data/missing-directory");

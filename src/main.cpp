@@ -44,6 +44,14 @@ int main()
             std::cout << genres[i];
         }
         std::cout << '\n';
+
+        const Movie* recommendation = database.recommendMovie(movieId);
+        if (recommendation) {
+            std::cout << "Recommended similar movie: " << recommendation->getTitle()
+                      << " (ID: " << recommendation->getMovieId() << ")\n";
+        } else {
+            std::cout << "No similar movie with overlapping ratings was found.\n";
+        }
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << '\n';
         return 1;
