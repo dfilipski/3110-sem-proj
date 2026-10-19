@@ -1,6 +1,6 @@
-# C++ build output
+# Generated build output
+/build/
 *.o
-/main
 *.dSYM/
 
 # macOS metadata
