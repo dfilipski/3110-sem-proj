@@ -1,4 +1,5 @@
 #include "Movie.h"
+#include "MovieDatabase.h"
 #include "Rating.h"
 #include "User.h"
 #include <cassert>
@@ -60,5 +61,22 @@ int main()
     assert(checkFile<User>("data/users.dat") == 6040);
     assert(checkFile<Movie>("data/movies.dat") == 3883);
     assert(checkFile<Rating>("data/ratings.dat") == 1000209);
+    const MovieDatabase database;
+    assert(database.getUsers().size() == 6040);
+    assert(database.getMovies().size() == 3883);
+    assert(database.getRatings().size() == 1000209);
+    const Movie* found = database.findMovieById(1);
+    assert(found && found->getTitle() == "Toy Story (1995)");
+    assert(database.findMovieById(3952));
+    assert(!database.findMovieById(0));
+    assert(!database.findMovieById(3953));
+    assert(!database.findMovieById(91)); // A gap in the MovieLens IDs.
+    bool missingDirectory = false;
+    try {
+        MovieDatabase missing("data/missing-directory");
+    } catch (const std::runtime_error& error) {
+        missingDirectory = std::string(error.what()).find("users.dat") != std::string::npos;
+    }
+    assert(missingDirectory);
     std::cout << "Model validation and all dataset round trips passed.\n";
 }
