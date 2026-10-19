@@ -1,0 +1,12 @@
+# C++ build output
+*.o
+/main
+*.dSYM/
+
+# macOS metadata
+.DS_Store
+
+# Editor temporary files
+*~
+*.swp
+*.swo
