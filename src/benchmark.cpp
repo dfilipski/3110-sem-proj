@@ -1,6 +1,7 @@
 #include "IMovieDatabase.h"
 #include "MovieDatabase.h"
 #include "MovieDatabaseMap.h"
+#include "MovieDatabaseTreap.h"
 
 #include <charconv>
 #include <chrono>
@@ -25,6 +26,9 @@ std::unique_ptr<IMovieDatabase> createDatabase(const std::string& implementation
     }
     if (implementation == "MovieDatabaseMap") {
         return std::make_unique<MovieDatabaseMap>(dataDirectory);
+    }
+    if (implementation == "MovieDatabaseTreap") {
+        return std::make_unique<MovieDatabaseTreap>(dataDirectory);
     }
     throw std::invalid_argument("Unknown implementation: " + implementation);
 }
@@ -125,7 +129,7 @@ int main(int argc, char* argv[])
     } catch (const std::exception& error) {
         std::cerr << "Benchmark error: " << error.what() << '\n'
                   << "Usage: " << argv[0] << " [implementation [rounds [data-directory]]]\n"
-                  << "Available implementations: MovieDatabase, MovieDatabaseMap\n";
+                  << "Available implementations: MovieDatabase, MovieDatabaseMap, MovieDatabaseTreap\n";
         return 1;
     }
     return 0;

@@ -1,6 +1,9 @@
 #include "Movie.h"
 #include "MovieDatabase.h"
 #include "MovieDatabaseMap.h"
+#include "MovieDatabaseTreap.h"
+#include <algorithm>
+#include <utility>
 #include "Rating.h"
 #include "User.h"
 #include <cassert>
@@ -47,6 +50,99 @@ static_assert(!std::is_abstract<MovieDatabase>::value,
 static_assert(!std::is_abstract<MovieDatabaseMap>::value,
               "MovieDatabaseMap must implement every interface method");
 
+// Inspect structural invariants independently of insertion and metadata updates.
+struct MovieDatabaseTreapTestAccess {
+    using Node = MovieDatabaseTreap::Node;
+    using Key = MovieDatabaseTreap::Key;
+    struct Summary {
+        std::uint32_t genres = 0;
+        double minimum = std::numeric_limits<double>::infinity();
+        double maximum = -std::numeric_limits<double>::infinity();
+        std::size_t count = 0;
+    };
+    static Summary inspect(const Node* node, const Key* lower, const Key* upper,
+                           const MovieDatabaseTreap& database)
+    {
+        if (!node) return {};
+        assert(!lower || *lower < node->key);
+        assert(!upper || node->key < *upper);
+        assert(!node->left || node->priority >= node->left->priority);
+        assert(!node->right || node->priority >= node->right->priority);
+        const auto& movie = database.movies_.at(node->movieIndex);
+        assert(movie.getMovieId() == std::get<0>(node->key));
+        assert(movie.hasGenre(std::get<2>(node->key)));
+        assert(database.averageRating(movie.getMovieId()) == std::get<1>(node->key));
+        Summary result;
+        const auto& genres = Movie::availableGenres();
+        for (std::size_t i = 0; i < genres.size(); ++i)
+            if (movie.hasGenre(genres[i])) result.genres |= std::uint32_t{1} << i;
+        assert(node->movieGenres == result.genres);
+        if (std::get<1>(node->key)) result.minimum = result.maximum = *std::get<1>(node->key);
+        result.count = 1;
+        for (auto child : {inspect(node->left.get(), lower, &node->key, database),
+                           inspect(node->right.get(), &node->key, upper, database)}) {
+            result.genres |= child.genres;
+            result.minimum = std::min(result.minimum, child.minimum);
+            result.maximum = std::max(result.maximum, child.maximum);
+            result.count += child.count;
+        }
+        assert(node->genres == result.genres);
+        assert(node->minimum == result.minimum && node->maximum == result.maximum);
+        return result;
+    }
+    static void check(const MovieDatabaseTreap& database)
+    {
+        std::size_t expected = 0;
+        for (const auto& movie : database.movies_) expected += movie.getGenres().size();
+        assert(inspect(database.root_.get(), nullptr, nullptr, database).count == expected);
+    }
+};
+
+static_assert(!std::is_abstract<MovieDatabaseTreap>::value, "Treap implements every query");
+static_assert(!std::is_copy_constructible<MovieDatabaseTreap>::value, "Treap is move-only");
+static_assert(std::is_nothrow_move_constructible<MovieDatabaseTreap>::value, "Treap supports moving");
+
+void sameResults(const std::vector<const Movie*>& expected, const std::vector<const Movie*>& actual,
+                 const IMovieDatabase& database)
+{
+    assert(expected.size() == actual.size());
+    int previous = 0;
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        assert(expected[i]->toDatLine() == actual[i]->toDatLine());
+        assert(actual[i] == database.findMovieById(actual[i]->getMovieId()));
+        assert(actual[i]->getMovieId() > previous);
+        previous = actual[i]->getMovieId();
+    }
+}
+
+void compareQueries(const IMovieDatabase& expected, const IMovieDatabase& actual)
+{
+    for (int id = -1; id <= 3953; ++id) {
+        const auto a = expected.findMovieById(id);
+        const auto b = actual.findMovieById(id);
+        assert(bool(a) == bool(b));
+        if (a) assert(a->toDatLine() == b->toDatLine());
+        assert(expected.averageRating(id) == actual.averageRating(id));
+    }
+    for (const auto& first : Movie::availableGenres()) {
+        sameResults(expected.findMoviesByGenres({first}), actual.findMoviesByGenres({first}), actual);
+        for (const auto& second : Movie::availableGenres())
+            sameResults(expected.findMoviesByGenres({first, second}),
+                        actual.findMoviesByGenres({first, second}), actual);
+    }
+    for (const auto& bounds : std::vector<std::pair<double, double>>{
+             {1, 5}, {1, 1}, {5, 5}, {3.5, 3.5}, {3.5001, 5}, {1, 2}, {2, 3}, {3, 4}, {4, 5}})
+        sameResults(expected.findMoviesByAverageRating(bounds.first, bounds.second),
+                    actual.findMoviesByAverageRating(bounds.first, bounds.second), actual);
+    rejects([&] { actual.findMoviesByGenres({}); });
+    rejects([&] { actual.findMoviesByGenres({"Unknown"}); });
+    rejects([&] { actual.findMoviesByAverageRating(0, 5); });
+    rejects([&] { actual.findMoviesByAverageRating(1, 6); });
+    rejects([&] { actual.findMoviesByAverageRating(4, 3); });
+    rejects([&] { actual.findMoviesByAverageRating(1, std::numeric_limits<double>::infinity()); });
+    rejects([&] { actual.findMoviesByAverageRating(std::numeric_limits<double>::quiet_NaN(), 5); });
+}
+
 int main()
 {
     // A separate dataset gives exact averages and explicit unrated/missing cases.
@@ -66,6 +162,18 @@ int main()
             "1::1::2::0\n2::1::5::0\n1::3952::1::0\n";
         const MovieDatabase storage(fixture.path.string());
         const MovieDatabaseMap mapStorage(fixture.path.string());
+        MovieDatabaseTreap treap(fixture.path.string());
+        MovieDatabaseTreapTestAccess::check(treap);
+        compareQueries(storage, treap);
+        compareQueries(storage, mapStorage);
+        const auto* original = treap.findMovieById(3952);
+        MovieDatabaseTreap moved(std::move(treap));
+        assert(moved.findMovieById(3952) == original);
+        MovieDatabaseTreap assigned(fixture.path.string());
+        assigned = std::move(moved);
+        assert(assigned.findMovieById(3952) == original);
+        MovieDatabaseTreapTestAccess::check(assigned);
+        compareQueries(storage, assigned);
         const IMovieDatabase& mapped = mapStorage;
         assert(mapStorage.getMovies().size() == 3);
         assert(mapStorage.getUsers().at(1).getZipCode() == "01234");
@@ -130,6 +238,9 @@ int main()
         assert(empty.findMoviesByAverageRating(1, 5).empty());
         assert(!empty.averageRating(1));
         assert(!empty.averageRating(3952));
+        const MovieDatabaseTreap unrated(fixture.path.string());
+        MovieDatabaseTreapTestAccess::check(unrated);
+        compareQueries(empty, unrated);
         const MovieDatabaseMap emptyRatings(fixture.path.string());
         assert(!emptyRatings.averageRating(1));
         assert(emptyRatings.findMoviesByAverageRating(1, 5).empty());
@@ -141,6 +252,12 @@ int main()
             duplicateRejected = std::string(error.what()).find("movies.dat:2:") != std::string::npos;
         }
         assert(duplicateRejected);
+        bool treapduplicateRejected = false;
+        try { MovieDatabaseTreap invalid(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            treapduplicateRejected = std::string(error.what()).find("movies.dat:2:") != std::string::npos;
+        }
+        assert(treapduplicateRejected);
         std::ofstream(fixture.path / "movies.dat") << "1::First::Comedy\ninvalid\n";
         bool malformedRejected = false;
         try { MovieDatabaseMap malformed(fixture.path.string()); }
@@ -148,6 +265,12 @@ int main()
             malformedRejected = std::string(error.what()).find("movies.dat:2:") != std::string::npos;
         }
         assert(malformedRejected);
+        bool treapmalformedRejected = false;
+        try { MovieDatabaseTreap invalid(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            treapmalformedRejected = std::string(error.what()).find("movies.dat:2:") != std::string::npos;
+        }
+        assert(treapmalformedRejected);
         std::ofstream(fixture.path / "movies.dat", std::ios::trunc).close();
         std::ofstream(fixture.path / "users.dat") <<
             "1::F::1::10::01234\n1::M::25::0::12345\n";
@@ -157,6 +280,12 @@ int main()
             duplicateUserRejected = std::string(error.what()).find("users.dat:2:") != std::string::npos;
         }
         assert(duplicateUserRejected);
+        bool treapduplicateUserRejected = false;
+        try { MovieDatabaseTreap invalid(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            treapduplicateUserRejected = std::string(error.what()).find("users.dat:2:") != std::string::npos;
+        }
+        assert(treapduplicateUserRejected);
         std::ofstream(fixture.path / "users.dat", std::ios::trunc).close();
         std::ofstream(fixture.path / "ratings.dat") << "1::1::3::0\n1::1::4::1\n";
         bool duplicateRatingRejected = false;
@@ -165,6 +294,12 @@ int main()
             duplicateRatingRejected = std::string(error.what()).find("ratings.dat:2:") != std::string::npos;
         }
         assert(duplicateRatingRejected);
+        bool treapduplicateRatingRejected = false;
+        try { MovieDatabaseTreap invalid(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            treapduplicateRatingRejected = std::string(error.what()).find("ratings.dat:2:") != std::string::npos;
+        }
+        assert(treapduplicateRatingRejected);
         bool duplicateVectorRatingRejected = false;
         try { MovieDatabase duplicateRating(fixture.path.string()); }
         catch (const std::runtime_error& error) {
@@ -172,7 +307,25 @@ int main()
         }
         assert(duplicateVectorRatingRejected);
         std::ofstream(fixture.path / "ratings.dat", std::ios::trunc).close();
+        const MovieDatabaseTreap emptyTreap(fixture.path.string());
+        MovieDatabaseTreapTestAccess::check(emptyTreap);
         const MovieDatabaseMap emptyMap(fixture.path.string());
+        compareQueries(emptyMap, emptyTreap);
+        // Equal, nonterminating averages and monotonic insertion exercise rotations.
+        std::ofstream movies(fixture.path / "movies.dat");
+        std::ofstream ratings(fixture.path / "ratings.dat");
+        for (int id = 1; id <= 128; ++id) {
+            movies << id << "::Synthetic::Comedy|Drama\n";
+            ratings << "1::" << id << "::2::0\n2::" << id << "::4::0\n3::" << id << "::4::0\n";
+        }
+        movies.close();
+        ratings.close();
+        const MovieDatabaseTreap sorted(fixture.path.string());
+        const MovieDatabase reference(fixture.path.string());
+        MovieDatabaseTreapTestAccess::check(sorted);
+        compareQueries(reference, sorted);
+        assert(sorted.findMoviesByAverageRating(10.0 / 3, 10.0 / 3).size() == 128);
+        assert(sorted.findMoviesByGenres({"Comedy", "Drama"}).size() == 128);
         assert(emptyMap.getUsers().empty());
         assert(emptyMap.getRatings().empty());
         assert(emptyMap.getMovies().empty());
@@ -211,7 +364,13 @@ int main()
     assert(mapDatabase.getUsers().size() == 6040);
     assert(mapDatabase.getRatings().size() == 1000209);
     assert(!mapDatabase.findMovieById(91));
+    const MovieDatabaseTreap treapDatabase;
+    MovieDatabaseTreapTestAccess::check(treapDatabase);
+    assert(treapDatabase.getMovies().size() == 3883);
+    assert(treapDatabase.getUsers().size() == 6040);
+    assert(treapDatabase.getRatings().size() == 1000209);
     const MovieDatabase database;
+    compareQueries(database, treapDatabase);
     assert(database.getUsers().size() == 6040);
     assert(database.getMovies().size() == 3883);
     assert(database.getRatings().size() == 1000209);
@@ -231,6 +390,7 @@ int main()
         const int id = m.getMovieId();
         assert(mapDatabase.findMovieById(id)->toDatLine() == m.toDatLine());
         assert(mapDatabase.averageRating(id) == database.averageRating(id));
+        assert(treapDatabase.averageRating(id) == database.averageRating(id));
         const auto average = database.averageRating(id);
         assert(average.has_value() == (counts[id] != 0));
         if (average) assert(std::abs(*average - means[id]) < 1e-12);
@@ -249,5 +409,11 @@ int main()
         missingDirectory = std::string(error.what()).find("users.dat") != std::string::npos;
     }
     assert(missingDirectory);
+    bool missingTreap = false;
+    try { MovieDatabaseTreap missing("data/missing-directory"); }
+    catch (const std::runtime_error& error) {
+        missingTreap = std::string(error.what()).find("users.dat") != std::string::npos;
+    }
+    assert(missingTreap);
     std::cout << "Model validation and all dataset round trips passed.\n";
 }

@@ -196,3 +196,36 @@ To add a storage implementation, implement `IMovieDatabase` and register its nam
 and constructor in `createDatabase` in `src/benchmark.cpp`. Add any implementation
 sources to `MODEL_SOURCES` in the Makefile. All timed queries go through the
 interface; the workloads do not depend on the concrete database type.
+
+### Composite-key treap database
+
+`MovieDatabaseTreap` is the third `IMovieDatabase` implementation. It owns movie,
+user, and rating vectors and indexes movies with a randomized treap ordered
+lexicographically by `(movieId, averageRating, genre)`. Each movie has one node
+per canonical genre; all nodes refer to the same owned movie by vector index.
+Averages are computed once, remain unrounded, and use `std::nullopt` for unrated
+movies. Duplicate movie IDs, user IDs, and movie/user ratings are rejected with
+file and line diagnostics.
+
+The treap maintains a search-tree ordering and a maximum-priority heap, using a
+fixed random seed for reproducibility. Subtrees cache their genre union and
+rated-average bounds to prune searches. Genre queries still require every
+requested genre on the same movie. Both searches return unique movies in ID
+order; rating ranges are inclusive and exclude unrated movies.
+
+With N movie/genre entries, construction takes expected O(N log N) tree work
+plus data loading and rating aggregation; tree space is O(N). ID lookup takes
+expected O(log N), while cached average lookup takes expected O(1). Genre and
+rating searches take O(N) in the worst case: movie ID is the leading key, so
+secondary fields do not independently provide logarithmic searches. Movies are
+immutable after construction. The database is move-only; returned pointers have
+the lifetime specified by `IMovieDatabase`.
+
+Build the benchmark and compare identical workloads:
+
+```sh
+make build/benchmark
+./build/benchmark MovieDatabase 10 data
+./build/benchmark MovieDatabaseMap 10 data
+./build/benchmark MovieDatabaseTreap 10 data
+```
