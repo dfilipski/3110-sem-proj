@@ -1,0 +1,36 @@
+{
+  "seed": 20261020,
+  "rounds_per_trial": 100,
+  "trials": 5,
+  "sizes": [
+    {
+      "movies": 500,
+      "ratings": 134492,
+      "users": 6040,
+      "id_hits_per_round": 500,
+      "id_misses_per_round": 3454
+    },
+    {
+      "movies": 2000,
+      "ratings": 508928,
+      "users": 6040,
+      "id_hits_per_round": 2000,
+      "id_misses_per_round": 1954
+    },
+    {
+      "movies": 3883,
+      "ratings": 1000209,
+      "users": 6040,
+      "id_hits_per_round": 3883,
+      "id_misses_per_round": 71
+    }
+  ],
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "compiler": "Apple clang version 17.0.0 (clang-1700.6.3.2)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin\n",
+  "flags": "-std=c++17 -Wall -Wextra -O2",
+  "sha256": {
+    "movies.dat": "0140fc2356357c1a851d0f52e893a1e4d3696df632c4141cea8d5bc3d621f0b9",
+    "ratings.dat": "506d64ca44484487c11dc2d9a28de5c54948213e6b96285e298afe28d6ea4e0f",
+    "users.dat": "1dc3a95300cb19f7c10e027daf29b8cdf1d908dab65b5edfb45950aa389a10a3"
+  }
+}

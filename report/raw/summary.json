@@ -1,0 +1,290 @@
+[
+  {
+    "movies": 500,
+    "implementation": "MovieDatabase",
+    "operation": "averageRating",
+    "median_ns": 2.656,
+    "min_ns": 2.636,
+    "max_ns": 5.911
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabase",
+    "operation": "findMovieById",
+    "median_ns": 124.993,
+    "min_ns": 121.464,
+    "max_ns": 130.353
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabase",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 1796.489,
+    "min_ns": 1670.536,
+    "max_ns": 5643.691
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabase",
+    "operation": "findMoviesByGenres",
+    "median_ns": 1906.354,
+    "min_ns": 1810.417,
+    "max_ns": 5270.542
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabaseMap",
+    "operation": "averageRating",
+    "median_ns": 2.685,
+    "min_ns": 2.621,
+    "max_ns": 2.753
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMovieById",
+    "median_ns": 2.762,
+    "min_ns": 2.579,
+    "max_ns": 2.82
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 2310.536,
+    "min_ns": 2218.214,
+    "max_ns": 2397.739
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMoviesByGenres",
+    "median_ns": 2060.875,
+    "min_ns": 2016.979,
+    "max_ns": 2291.146
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "averageRating",
+    "median_ns": 2.786,
+    "min_ns": 2.576,
+    "max_ns": 3.273
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMovieById",
+    "median_ns": 11.889,
+    "min_ns": 11.25,
+    "max_ns": 13.179
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 1553.273,
+    "min_ns": 1477.083,
+    "max_ns": 1608.81
+  },
+  {
+    "movies": 500,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMoviesByGenres",
+    "median_ns": 832.062,
+    "min_ns": 775.0,
+    "max_ns": 927.062
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabase",
+    "operation": "averageRating",
+    "median_ns": 2.59,
+    "min_ns": 2.427,
+    "max_ns": 2.819
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabase",
+    "operation": "findMovieById",
+    "median_ns": 382.509,
+    "min_ns": 375.758,
+    "max_ns": 400.401
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabase",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 8154.94,
+    "min_ns": 7836.071,
+    "max_ns": 8513.929
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabase",
+    "operation": "findMoviesByGenres",
+    "median_ns": 8048.042,
+    "min_ns": 7919.583,
+    "max_ns": 8243.875
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabaseMap",
+    "operation": "averageRating",
+    "median_ns": 2.409,
+    "min_ns": 2.259,
+    "max_ns": 2.592
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMovieById",
+    "median_ns": 2.537,
+    "min_ns": 2.129,
+    "max_ns": 2.593
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 13687.797,
+    "min_ns": 12303.87,
+    "max_ns": 16197.679
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMoviesByGenres",
+    "median_ns": 12025.021,
+    "min_ns": 11491.333,
+    "max_ns": 13662.416
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "averageRating",
+    "median_ns": 2.492,
+    "min_ns": 2.27,
+    "max_ns": 2.502
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMovieById",
+    "median_ns": 17.008,
+    "min_ns": 15.927,
+    "max_ns": 18.901
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 7010.119,
+    "min_ns": 6764.286,
+    "max_ns": 7340.179
+  },
+  {
+    "movies": 2000,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMoviesByGenres",
+    "median_ns": 3372.979,
+    "min_ns": 3236.583,
+    "max_ns": 3413.354
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabase",
+    "operation": "averageRating",
+    "median_ns": 1.821,
+    "min_ns": 1.804,
+    "max_ns": 1.883
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabase",
+    "operation": "findMovieById",
+    "median_ns": 649.068,
+    "min_ns": 645.473,
+    "max_ns": 667.661
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabase",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 15763.81,
+    "min_ns": 15247.797,
+    "max_ns": 16123.094
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabase",
+    "operation": "findMoviesByGenres",
+    "median_ns": 18343.125,
+    "min_ns": 18197.75,
+    "max_ns": 21582.125
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabaseMap",
+    "operation": "averageRating",
+    "median_ns": 1.723,
+    "min_ns": 1.717,
+    "max_ns": 1.806
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMovieById",
+    "median_ns": 1.653,
+    "min_ns": 1.448,
+    "max_ns": 1.68
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 20682.5,
+    "min_ns": 20091.906,
+    "max_ns": 20834.821
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabaseMap",
+    "operation": "findMoviesByGenres",
+    "median_ns": 21462.834,
+    "min_ns": 21062.166,
+    "max_ns": 22410.333
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "averageRating",
+    "median_ns": 1.821,
+    "min_ns": 1.809,
+    "max_ns": 1.884
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMovieById",
+    "median_ns": 17.44,
+    "min_ns": 16.588,
+    "max_ns": 20.104
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMoviesByAverageRating",
+    "median_ns": 13880.0,
+    "min_ns": 13302.5,
+    "max_ns": 20787.857
+  },
+  {
+    "movies": 3883,
+    "implementation": "MovieDatabaseTreap",
+    "operation": "findMoviesByGenres",
+    "median_ns": 8298.187,
+    "min_ns": 7469.188,
+    "max_ns": 8553.396
+  }
+]

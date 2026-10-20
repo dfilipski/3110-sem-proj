@@ -1,0 +1,6 @@
+Implementation: MovieDatabaseMap, rounds: 100, data: <fixture-2000>
+Construction/loading: 223.797 ms
+findMovieById: 395400 calls, 1.003 ms total, 2.537 ns/call, checksum=400716389
+averageRating: 395400 calls, 1.025 ms total, 2.592 ns/call, checksum=625236474241
+findMoviesByGenres: 2000 calls, 23.436 ms total, 11718.208 ns/call, checksum=667713929
+findMoviesByAverageRating: 700 calls, 10.318 ms total, 14739.404 ns/call, checksum=905885867

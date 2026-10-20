@@ -1,0 +1,6 @@
+Implementation: MovieDatabaseTreap, rounds: 100, data: <fixture-3883>
+Construction/loading: 385.075 ms
+findMovieById: 395400 calls, 7.040 ms total, 17.804 ns/call, checksum=778894830
+averageRating: 395400 calls, 0.745 ms total, 1.884 ns/call, checksum=1212336622294
+findMoviesByGenres: 2000 calls, 17.107 ms total, 8553.396 ns/call, checksum=1306233000
+findMoviesByAverageRating: 700 calls, 10.956 ms total, 15650.774 ns/call, checksum=1761644727

@@ -3,6 +3,12 @@
 *.o
 *.dSYM/
 
+# Generated report exports and temporary working files
+/output/
+/tmp/
+__pycache__/
+*.py[cod]
+
 # macOS metadata
 .DS_Store
 
