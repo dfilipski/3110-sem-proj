@@ -233,3 +233,33 @@ make build/benchmark
 ./build/benchmark MovieDatabaseMap 10 data
 ./build/benchmark MovieDatabaseTreap 10 data
 ```
+
+## Editing and regenerating the report
+
+Edit [report/report.md](report/report.md), which is the report's source of truth.
+From the repository root, regenerate the PDF with Python 3 and ReportLab:
+
+```sh
+# Install the PDF dependency once, if needed.
+python3 -m pip install reportlab
+python3 report/scripts/write_report.py
+```
+
+The generated PDF is `output/pdf/movie-catalog-report.pdf`. The generator reads
+the Markdown without modifying it. Generated exports in `output/` are ignored
+by Git. Open the PDF after editing to check layout and page count.
+
+The Markdown supports headings, paragraphs, bold, italics, inline code, links,
+lists, and pipe tables. Use `<!-- page break -->` on its own line for an explicit
+page break; content before the first break forms the centered title page.
+
+Wording changes do not require rerunning benchmarks. To collect new measurements:
+
+```sh
+python3 report/scripts/collect.py
+```
+
+This updates `report/raw/` only. Update the tables and numerical discussion in
+`report/report.md` from the new `report/raw/summary.json`, then regenerate the PDF.
+PDF regeneration does not rebuild the submission ZIP. See
+[report/README.md](report/README.md) for experimental and reproduction details.
