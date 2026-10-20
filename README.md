@@ -188,3 +188,32 @@ exercise interactive input, invalid entries, repeated searches, and EOF.
   unrounded averages; displayed ratings are rounded to two decimal places.
 - **Generated `.dSYM` folders:** These contain macOS debugging symbols. Like
   `build/` and object files, they are generated output and should not be committed.
+
+## Benchmarks
+
+Run `make benchmark` to build and run the optimized (`-O2`) benchmark executable.
+It uses separate objects from the application's debug build. To customize a run:
+
+```sh
+make build/benchmark
+./build/benchmark MovieDatabase 100 data
+```
+
+Arguments are implementation name, positive repetition count (default 10), and
+data directory (default `data`). Run from the repository root. Each repetition
+looks up IDs 0 through 3953, searches each canonical genre plus two genre
+combinations, and searches seven rating ranges including the full range and an
+exact bound. Unknown IDs and gaps are included; invalid search arguments are
+covered by the model tests rather than timed.
+
+Construction/loading is reported separately. Each method gets one untimed warmup
+and reports timed call count, total milliseconds, average nanoseconds per call,
+and a result checksum (including the warmup). Search timings include result
+allocation, traversal, and destruction. These are warm-cache workload averages;
+repeat runs on the same machine, dataset, and compiler settings for comparisons.
+Checksums help compare results but do not replace correctness tests.
+
+To add a storage implementation, implement `IMovieDatabase` and register its name
+and constructor in `createDatabase` in `src/benchmark.cpp`. Add any implementation
+sources to `MODEL_SOURCES` in the Makefile. All timed queries go through the
+interface; the workloads do not depend on the concrete database type.
