@@ -171,7 +171,10 @@ exercise interactive input, invalid entries, repeated searches, and EOF.
 ## Benchmarks
 
 Run `make benchmark` to build and run the optimized (`-O2`) benchmark executable.
-It uses separate objects from the application's debug build. To customize a run:
+It uses separate objects from the application's debug build. With no arguments,
+it runs MovieDatabase, MovieDatabaseMap, and MovieDatabaseTreap in sequence,
+with a blank line between implementations (10 repetitions each, using `data`).
+To benchmark just one implementation or customize its run:
 
 ```sh
 make build/benchmark
@@ -193,7 +196,8 @@ repeat runs on the same machine, dataset, and compiler settings for comparisons.
 Checksums help compare results but do not replace correctness tests.
 
 To add a storage implementation, implement `IMovieDatabase` and register its name
-and constructor in `createDatabase` in `src/benchmark.cpp`. Add any implementation
+and constructor in `createDatabase` in `src/benchmark.cpp`, and include its name
+in the default implementation list in `main`. Add any implementation
 sources to `MODEL_SOURCES` in the Makefile. All timed queries go through the
 interface; the workloads do not depend on the concrete database type.
 

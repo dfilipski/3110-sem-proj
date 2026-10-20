@@ -58,6 +58,68 @@ void benchmark(const char* name, int rounds, std::size_t queriesPerRound, Query 
     std::cout << name << ": " << calls << " calls, " << milliseconds << " ms total, "
               << milliseconds * 1000000.0 / calls << " ns/call, checksum=" << checksum << '\n';
 }
+// Keep each database's lifetime within its run so implementations load sequentially.
+void benchmarkImplementation(const std::string& implementation, int rounds,
+                             const std::string& dataDirectory)
+{
+    const auto start = Clock::now();
+    const auto storage = createDatabase(implementation, dataDirectory);
+    const double loadMilliseconds =
+        std::chrono::duration<double, std::milli>(Clock::now() - start).count();
+    const IMovieDatabase& database = *storage;
+    std::cout << std::fixed << std::setprecision(3)
+              << "Implementation: " << implementation << ", rounds: " << rounds
+              << ", data: " << dataDirectory << '\n'
+              << "Construction/loading: " << loadMilliseconds << " ms\n";
+
+    // Include every MovieLens ID (including gaps) and two out-of-range IDs.
+    constexpr int lastMovieId = 3952;
+    benchmark("findMovieById", rounds, lastMovieId + 2, [&] {
+        std::uint64_t checksum = 0;
+        for (int id = 0; id <= lastMovieId + 1; ++id) {
+            const Movie* movie = database.findMovieById(id);
+            if (movie) checksum += movie->getMovieId();
+        }
+        return checksum;
+    });
+    benchmark("averageRating", rounds, lastMovieId + 2, [&] {
+        std::uint64_t checksum = 0;
+        for (int id = 0; id <= lastMovieId + 1; ++id) {
+            const auto average = database.averageRating(id);
+            if (average) checksum += static_cast<std::uint64_t>(*average * 1000000.0);
+        }
+        return checksum;
+    });
+
+    std::vector<std::vector<std::string>> genreQueries;
+    for (const auto& genre : Movie::availableGenres()) {
+        genreQueries.push_back({genre});
+    }
+    genreQueries.push_back({"Comedy", "Romance"});
+    genreQueries.push_back({"Action", "Adventure", "Sci-Fi"});
+    benchmark("findMoviesByGenres", rounds, genreQueries.size(), [&] {
+        std::uint64_t checksum = 0;
+        for (const auto& genres : genreQueries) {
+            const auto results = database.findMoviesByGenres(genres);
+            checksum += results.size();
+            for (const Movie* movie : results) checksum += movie->getMovieId();
+        }
+        return checksum;
+    });
+
+    const std::vector<std::pair<double, double>> ratingQueries = {
+        {1, 5}, {1, 2}, {2, 3}, {3, 4}, {4, 5}, {3.5, 4.0}, {5, 5}
+    };
+    benchmark("findMoviesByAverageRating", rounds, ratingQueries.size(), [&] {
+        std::uint64_t checksum = 0;
+        for (const auto& bounds : ratingQueries) {
+            const auto results = database.findMoviesByAverageRating(bounds.first, bounds.second);
+            checksum += results.size();
+            for (const Movie* movie : results) checksum += movie->getMovieId();
+        }
+        return checksum;
+    });
+}
 }
 
 int main(int argc, char* argv[])
@@ -67,65 +129,19 @@ int main(int argc, char* argv[])
             throw std::invalid_argument("Too many arguments");
         }
         const std::string implementation = argc > 1 ? argv[1] : "MovieDatabase";
-        const int rounds = argc > 2 ? parseRounds(argv[2]) : 10;
+        const int rounds = argc > 2 ? parseRounds(argv[2]) : 100;
         const std::string dataDirectory = argc > 3 ? argv[3] : "data";
-        const auto start = Clock::now();
-        const auto storage = createDatabase(implementation, dataDirectory);
-        const double loadMilliseconds =
-            std::chrono::duration<double, std::milli>(Clock::now() - start).count();
-        const IMovieDatabase& database = *storage;
-        std::cout << std::fixed << std::setprecision(3)
-                  << "Implementation: " << implementation << ", rounds: " << rounds
-                  << ", data: " << dataDirectory << '\n'
-                  << "Construction/loading: " << loadMilliseconds << " ms\n";
-
-        // Include every MovieLens ID (including gaps) and two out-of-range IDs.
-        constexpr int lastMovieId = 3952;
-        benchmark("findMovieById", rounds, lastMovieId + 2, [&] {
-            std::uint64_t checksum = 0;
-            for (int id = 0; id <= lastMovieId + 1; ++id) {
-                const Movie* movie = database.findMovieById(id);
-                if (movie) checksum += movie->getMovieId();
+        if (argc == 1) {
+            const std::vector<std::string> implementations = {
+                "MovieDatabase", "MovieDatabaseMap", "MovieDatabaseTreap"
+            };
+            for (std::size_t i = 0; i < implementations.size(); ++i) {
+                if (i != 0) std::cout << '\n';
+                benchmarkImplementation(implementations[i], rounds, dataDirectory);
             }
-            return checksum;
-        });
-        benchmark("averageRating", rounds, lastMovieId + 2, [&] {
-            std::uint64_t checksum = 0;
-            for (int id = 0; id <= lastMovieId + 1; ++id) {
-                const auto average = database.averageRating(id);
-                if (average) checksum += static_cast<std::uint64_t>(*average * 1000000.0);
-            }
-            return checksum;
-        });
-
-        std::vector<std::vector<std::string>> genreQueries;
-        for (const auto& genre : Movie::availableGenres()) {
-            genreQueries.push_back({genre});
+        } else {
+            benchmarkImplementation(implementation, rounds, dataDirectory);
         }
-        genreQueries.push_back({"Comedy", "Romance"});
-        genreQueries.push_back({"Action", "Adventure", "Sci-Fi"});
-        benchmark("findMoviesByGenres", rounds, genreQueries.size(), [&] {
-            std::uint64_t checksum = 0;
-            for (const auto& genres : genreQueries) {
-                const auto results = database.findMoviesByGenres(genres);
-                checksum += results.size();
-                for (const Movie* movie : results) checksum += movie->getMovieId();
-            }
-            return checksum;
-        });
-
-        const std::vector<std::pair<double, double>> ratingQueries = {
-            {1, 5}, {1, 2}, {2, 3}, {3, 4}, {4, 5}, {3.5, 4.0}, {5, 5}
-        };
-        benchmark("findMoviesByAverageRating", rounds, ratingQueries.size(), [&] {
-            std::uint64_t checksum = 0;
-            for (const auto& bounds : ratingQueries) {
-                const auto results = database.findMoviesByAverageRating(bounds.first, bounds.second);
-                checksum += results.size();
-                for (const Movie* movie : results) checksum += movie->getMovieId();
-            }
-            return checksum;
-        });
     } catch (const std::exception& error) {
         std::cerr << "Benchmark error: " << error.what() << '\n'
                   << "Usage: " << argv[0] << " [implementation [rounds [data-directory]]]\n"
