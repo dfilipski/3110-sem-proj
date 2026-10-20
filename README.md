@@ -1,7 +1,7 @@
-# Movie Search and Recommendation
+# Movie Search
 
 A C++17 command-line program for exploring the MovieLens 1M dataset. Look up a
-movie and get a similar recommendation, find movies that share selected genres,
+movie by ID, find movies that share selected genres,
 or search by average user rating.
 
 ## Requirements
@@ -46,7 +46,7 @@ The dataset loads once at startup. The program displays the loaded record counts
 and presents this menu:
 
 ```text
-1. Find a movie by ID and recommend another
+1. Find a movie by ID
 2. Search by genre
 3. Search by average rating
 0. Exit
@@ -55,14 +55,13 @@ and presents this menu:
 After each search, the menu appears again. Choose `0` to quit. End-of-file also
 exits cleanly (Ctrl-D on macOS/Linux). Invalid input prompts you to try again.
 
-### 1. Movie lookup and recommendation
+### 1. Movie lookup
 
 Enter a whole-number movie ID between **1 and 3952**. Movie IDs contain gaps, so
 some IDs within that range have no matching movie.
 
-The program displays the movie's ID, full title, genres, and average user rating,
-then recommends a similar movie when one is available. Movies without ratings
-show a message instead of an average.
+The program displays the movie's ID, full title, genres, and average user rating.
+Movies without ratings show a message instead of an average.
 
 For example, to look up movie `1` and then exit:
 
@@ -106,25 +105,6 @@ including the ID, full title, genres, and average rating when available. A messa
 indicates when there are no matches. Large searches can produce substantial
 terminal output.
 
-## How recommendations work
-
-Each movie is represented by a sparse vector of user ratings. The program uses
-cosine similarity to compare the selected movie with other movies:
-
-```text
-similarity(A, B) = dot(A, B) / (norm(A) * norm(B))
-```
-
-Missing ratings count as zero for this calculation. Norms use each movie's full
-rating vector, rather than only users who rated both movies. The sparse matrix
-uses compressed sparse row (CSR) storage to avoid a dense movie-by-user matrix.
-
-The recommendation excludes the selected movie and requires positive similarity.
-If two candidates have equal similarity, the smaller movie ID wins. Unknown
-movies or movies with no positive candidate produce no recommendation. This is
-movie-to-movie similarity based on raw ratings, rather than a personalized
-recommendation for an individual user.
-
 ## Dataset
 
 The supplied MovieLens 1M files contain:
@@ -143,7 +123,7 @@ file path and line number.
 
 The current implementation is tailored to MovieLens 1M: movie IDs range from
 1–3952 and user IDs from 1–6040. Replacing the files with another dataset may
-require changes to validation, matrix dimensions, prompts, and tests. Preserve
+require changes to validation, prompts, and tests. Preserve
 the supplied data files when developing; use separate fixtures for test cases.
 
 ## Project structure
@@ -155,9 +135,8 @@ the supplied data files when developing; use separate fixtures for test cases.
 | `src/User.h`, `src/User.cpp` | User records and categorical descriptions |
 | `src/Rating.h`, `src/Rating.cpp` | Rating records |
 | `src/DataRecord.h` | Shared delimiter splitting and strict integer parsing |
-| `src/MovieDatabase.h`, `src/MovieDatabase.cpp` | Dataset loading, cached averages, searches, and recommendations |
-| `src/MovieRatingsCSR.h`, `src/MovieRatingsCSR.cpp` | Sparse ratings matrix and cosine similarity |
-| `tests/models_test.cpp` | Model, search, recommendation, and dataset integration tests |
+| `src/MovieDatabase.h`, `src/MovieDatabase.cpp` | Dataset loading, cached averages, searches |
+| `tests/models_test.cpp` | Model, search, and dataset integration tests |
 | `Makefile` | Application and test build targets |
 | `data/` | MovieLens source data |
 | `build/` | Generated executables, object files, and dependency files |
@@ -170,7 +149,7 @@ make test
 
 This builds and runs `build/models_test`. Tests cover record validation,
 serialization round trips across the full dataset, rating averages, genre and
-rating searches, sparse similarity calculations, and recommendations. Small
+rating searches. Small
 synthetic datasets cover edge cases without editing the supplied files.
 
 Tests use `assert`; do not compile them with `-DNDEBUG`. For CLI changes, also
@@ -192,7 +171,10 @@ exercise interactive input, invalid entries, repeated searches, and EOF.
 ## Benchmarks
 
 Run `make benchmark` to build and run the optimized (`-O2`) benchmark executable.
-It uses separate objects from the application's debug build. To customize a run:
+It uses separate objects from the application's debug build. With no arguments,
+it runs MovieDatabase, MovieDatabaseMap, and MovieDatabaseTreap in sequence,
+with a blank line between implementations (10 repetitions each, using `data`).
+To benchmark just one implementation or customize its run:
 
 ```sh
 make build/benchmark
@@ -214,6 +196,40 @@ repeat runs on the same machine, dataset, and compiler settings for comparisons.
 Checksums help compare results but do not replace correctness tests.
 
 To add a storage implementation, implement `IMovieDatabase` and register its name
-and constructor in `createDatabase` in `src/benchmark.cpp`. Add any implementation
+and constructor in `createDatabase` in `src/benchmark.cpp`, and include its name
+in the default implementation list in `main`. Add any implementation
 sources to `MODEL_SOURCES` in the Makefile. All timed queries go through the
 interface; the workloads do not depend on the concrete database type.
+
+### Composite-key treap database
+
+`MovieDatabaseTreap` is the third `IMovieDatabase` implementation. It owns movie,
+user, and rating vectors and indexes movies with a randomized treap ordered
+lexicographically by `(movieId, averageRating, genre)`. Each movie has one node
+per canonical genre; all nodes refer to the same owned movie by vector index.
+Averages are computed once, remain unrounded, and use `std::nullopt` for unrated
+movies. Duplicate movie IDs, user IDs, and movie/user ratings are rejected with
+file and line diagnostics.
+
+The treap maintains a search-tree ordering and a maximum-priority heap, using a
+fixed random seed for reproducibility. Subtrees cache their genre union and
+rated-average bounds to prune searches. Genre queries still require every
+requested genre on the same movie. Both searches return unique movies in ID
+order; rating ranges are inclusive and exclude unrated movies.
+
+With N movie/genre entries, construction takes expected O(N log N) tree work
+plus data loading and rating aggregation; tree space is O(N). ID lookup takes
+expected O(log N), while cached average lookup takes expected O(1). Genre and
+rating searches take O(N) in the worst case: movie ID is the leading key, so
+secondary fields do not independently provide logarithmic searches. Movies are
+immutable after construction. The database is move-only; returned pointers have
+the lifetime specified by `IMovieDatabase`.
+
+Build the benchmark and compare identical workloads:
+
+```sh
+make build/benchmark
+./build/benchmark MovieDatabase 10 data
+./build/benchmark MovieDatabaseMap 10 data
+./build/benchmark MovieDatabaseTreap 10 data
+```

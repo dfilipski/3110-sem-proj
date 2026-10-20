@@ -103,7 +103,7 @@ int main()
                   << database.getMovies().size() << " movies, and "
                   << database.getRatings().size() << " ratings.\n";
         while (true) {
-            std::cout << "\n1. Find a movie by ID and recommend another\n"
+            std::cout << "\n1. Find a movie by ID\n"
                          "2. Search by genre\n3. Search by average rating\n0. Exit\n";
             int choice;
             if (!readNumber("Choose an option: ", 0, 3, choice) || choice == 0) break;
@@ -116,13 +116,6 @@ int main()
                     continue;
                 }
                 displayMovie(database, *movie);
-                const Movie* recommendation = database.recommendMovie(movieId);
-                if (recommendation) {
-                    std::cout << "Recommended similar movie: " << recommendation->getTitle()
-                              << " (ID: " << recommendation->getMovieId() << ")\n";
-                } else {
-                    std::cout << "No similar movie with overlapping ratings was found.\n";
-                }
             } else if (choice == 2) {
                 if (!searchGenres(database)) break;
             } else {

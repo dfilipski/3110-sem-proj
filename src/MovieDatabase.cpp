@@ -5,6 +5,9 @@
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <type_traits>
+#include <unordered_set>
+#include <utility>
 
 namespace {
 // Each model parses its own MovieLens record format.
@@ -17,12 +20,20 @@ std::vector<T> loadRecords(const std::string& path)
     }
 
     std::vector<T> records;
+    std::unordered_set<std::uint64_t> ratingKeys;
     std::string line;
     std::size_t lineNumber = 0;
     while (std::getline(input, line)) {
         ++lineNumber;
         try {
-            records.push_back(T::fromDatLine(line));
+            auto record = T::fromDatLine(line);
+            if constexpr (std::is_same_v<T, Rating>) {
+                const auto key = (static_cast<std::uint64_t>(record.getMovieId()) << 32) |
+                                 static_cast<std::uint32_t>(record.getUserId());
+                if (!ratingKeys.insert(key).second)
+                    throw std::invalid_argument("Duplicate movie/user rating pair");
+            }
+            records.push_back(std::move(record));
         } catch (const std::invalid_argument& error) {
             throw std::runtime_error(path + ":" + std::to_string(lineNumber) + ": " + error.what());
         }
@@ -38,8 +49,7 @@ std::vector<T> loadRecords(const std::string& path)
 MovieDatabase::MovieDatabase(const std::string& dataDirectory)
     : users_(loadRecords<User>((std::filesystem::path(dataDirectory) / "users.dat").string())),
       movies_(loadRecords<Movie>((std::filesystem::path(dataDirectory) / "movies.dat").string())),
-      ratings_(loadRecords<Rating>((std::filesystem::path(dataDirectory) / "ratings.dat").string())),
-      ratingMatrix_(ratings_)
+      ratings_(loadRecords<Rating>((std::filesystem::path(dataDirectory) / "ratings.dat").string()))
 {
     struct RatingTotals {
         double sum = 0;
@@ -72,23 +82,6 @@ const Movie* MovieDatabase::findMovieById(int movieId) const
     const auto movie = std::find_if(movies_.begin(), movies_.end(),
         [movieId](const Movie& entry) { return entry.getMovieId() == movieId; });
     return movie == movies_.end() ? nullptr : &*movie;
-}
-
-const Movie* MovieDatabase::recommendMovie(int movieId) const
-{
-    if (!findMovieById(movieId)) return nullptr;
-    const Movie* best = nullptr;
-    double bestSimilarity = 0;
-    for (const auto& movie : movies_) {
-        if (movie.getMovieId() == movieId) continue;
-        const double similarity = ratingMatrix_.cosineSimilarity(movieId, movie.getMovieId());
-        if (similarity > bestSimilarity ||
-            (best && similarity == bestSimilarity && movie.getMovieId() < best->getMovieId())) {
-            best = &movie;
-            bestSimilarity = similarity;
-        }
-    }
-    return best;
 }
 
 std::vector<const Movie*> MovieDatabase::findMoviesByGenres(const std::vector<std::string>& genres) const
