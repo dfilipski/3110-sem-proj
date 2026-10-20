@@ -14,6 +14,8 @@ public:
     int getMovieId() const { return movieId_; }
     const std::string& getTitle() const { return title_; }
     const std::vector<std::string>& getGenres() const { return genres_; }
+    // Canonical genre names accepted by movie records.
+    static const std::vector<std::string>& availableGenres();
     bool hasGenre(const std::string& genre) const;
 
 private:

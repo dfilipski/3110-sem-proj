@@ -10,14 +10,9 @@ Movie::Movie(int movieId, std::string title, std::vector<std::string> genres)
     if (title_.empty() || title_.find("::") != std::string::npos ||
         title_.find_first_of("\r\n") != std::string::npos)
         throw std::invalid_argument("Invalid movie title");
-    static const std::vector<std::string> allowed = {
-        "Action", "Adventure", "Animation", "Children's", "Comedy", "Crime",
-        "Documentary", "Drama", "Fantasy", "Film-Noir", "Horror", "Musical",
-        "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"
-    };
     if (genres_.empty()) throw std::invalid_argument("Movie must have at least one genre");
     for (const auto& genre : genres_)
-        if (std::find(allowed.begin(), allowed.end(), genre) == allowed.end())
+        if (std::find(availableGenres().begin(), availableGenres().end(), genre) == availableGenres().end())
             throw std::invalid_argument("Unknown movie genre: " + genre);
 }
 
@@ -40,4 +35,14 @@ std::string Movie::toDatLine() const
 bool Movie::hasGenre(const std::string& genre) const
 {
     return std::find(genres_.begin(), genres_.end(), genre) != genres_.end();
+}
+
+const std::vector<std::string>& Movie::availableGenres()
+{
+    static const std::vector<std::string> allowed = {
+        "Action", "Adventure", "Animation", "Children's", "Comedy", "Crime",
+        "Documentary", "Drama", "Fantasy", "Film-Noir", "Horror", "Musical",
+        "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"
+    };
+    return allowed;
 }

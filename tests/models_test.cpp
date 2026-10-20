@@ -50,7 +50,7 @@ int main()
         const TemporaryDataset fixture;
         std::ofstream(fixture.path / "users.dat") << "1::F::1::10::01234\n2::M::25::0::12345\n";
         std::ofstream(fixture.path / "movies.dat") <<
-            "3952::Last::Drama\n3::Unrated::Comedy\n1::First::Comedy\n";
+            "3952::Last::Drama|Comedy\n3::Unrated::Comedy\n1::First::Comedy\n";
         std::ofstream(fixture.path / "ratings.dat") <<
             "1::1::2::0\n2::1::5::0\n1::3952::1::0\n";
         const MovieDatabase small(fixture.path.string());
@@ -61,9 +61,31 @@ int main()
         assert(!small.averageRating(-1));
         assert(!small.averageRating(0));
         assert(!small.averageRating(3953));
+        const auto comedy = small.findMoviesByGenres({"Comedy"});
+        assert(comedy.size() == 3 && comedy[0]->getMovieId() == 1 &&
+               comedy[1]->getMovieId() == 3 && comedy[2]->getMovieId() == 3952);
+        assert(comedy[0] == small.findMovieById(1));
+        const auto both = small.findMoviesByGenres({"Drama", "Comedy"});
+        assert(both.size() == 1 && both[0]->getMovieId() == 3952);
+        assert(small.findMoviesByGenres({"Action"}).empty());
+        assert(small.findMoviesByGenres({"Comedy", "Comedy"}).size() == 3);
+        rejects([&] { small.findMoviesByGenres({}); });
+        rejects([&] { small.findMoviesByGenres({"Unknown"}); });
+        const auto rated = small.findMoviesByAverageRating(1, 5);
+        assert(rated.size() == 2 && rated[0]->getMovieId() == 1 &&
+               rated[1]->getMovieId() == 3952);
+        assert(small.findMoviesByAverageRating(3.5, 3.5).front() == comedy[0]);
+        assert(small.findMoviesByAverageRating(3.5001, 5).empty());
+        assert(small.findMoviesByAverageRating(1, 1).size() == 1);
+        rejects([&] { small.findMoviesByAverageRating(0, 5); });
+        rejects([&] { small.findMoviesByAverageRating(1, 6); });
+        rejects([&] { small.findMoviesByAverageRating(4, 3); });
+        rejects([&] { small.findMoviesByAverageRating(std::numeric_limits<double>::quiet_NaN(), 5); });
+        rejects([&] { small.findMoviesByAverageRating(1, std::numeric_limits<double>::infinity()); });
         // Empty ratings must leave every movie without an average.
         std::ofstream(fixture.path / "ratings.dat", std::ios::trunc).close();
         const MovieDatabase empty(fixture.path.string());
+        assert(empty.findMoviesByAverageRating(1, 5).empty());
         assert(!empty.averageRating(1));
         assert(!empty.averageRating(3952));
     }

@@ -1,6 +1,7 @@
 #include "MovieDatabase.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
@@ -88,4 +89,38 @@ const Movie* MovieDatabase::recommendMovie(int movieId) const
         }
     }
     return best;
+}
+
+std::vector<const Movie*> MovieDatabase::findMoviesByGenres(const std::vector<std::string>& genres) const
+{
+    if (genres.empty()) throw std::invalid_argument("Select at least one genre");
+    const auto& available = Movie::availableGenres();
+    for (const auto& genre : genres) {
+        if (std::find(available.begin(), available.end(), genre) == available.end())
+            throw std::invalid_argument("Unknown movie genre: " + genre);
+    }
+    std::vector<const Movie*> results;
+    for (const auto& movie : movies_) {
+        if (std::all_of(genres.begin(), genres.end(),
+                        [&movie](const std::string& genre) { return movie.hasGenre(genre); }))
+            results.push_back(&movie);
+    }
+    std::sort(results.begin(), results.end(),
+              [](const Movie* a, const Movie* b) { return a->getMovieId() < b->getMovieId(); });
+    return results;
+}
+
+std::vector<const Movie*> MovieDatabase::findMoviesByAverageRating(double minimum, double maximum) const
+{
+    if (!std::isfinite(minimum) || !std::isfinite(maximum) ||
+        minimum < 1 || maximum > 5 || minimum > maximum)
+        throw std::invalid_argument("Rating range must satisfy 1 <= minimum <= maximum <= 5");
+    std::vector<const Movie*> results;
+    for (const auto& movie : movies_) {
+        const auto average = averageRating(movie.getMovieId());
+        if (average && *average >= minimum && *average <= maximum) results.push_back(&movie);
+    }
+    std::sort(results.begin(), results.end(),
+              [](const Movie* a, const Movie* b) { return a->getMovieId() < b->getMovieId(); });
+    return results;
 }
