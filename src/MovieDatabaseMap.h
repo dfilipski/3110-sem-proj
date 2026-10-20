@@ -10,17 +10,33 @@
 #include <optional>
 #include <unordered_map>
 #include <vector>
+#include <utility>
+#include <functional>
+#include <cstdint>
 
 class MovieDatabaseMap : public IMovieDatabase {
 public:
+    // Rating keys are (movie ID, user ID), identifying one user's rating of a movie.
+    using RatingKey = std::pair<int, int>;
+    struct RatingKeyHash {
+        std::size_t operator()(const RatingKey& key) const
+        {
+            return std::hash<std::uint64_t>{}(
+                (static_cast<std::uint64_t>(key.first) << 32) |
+                static_cast<std::uint32_t>(key.second));
+        }
+    };
+    using RatingsMap = std::unordered_map<RatingKey, Rating, RatingKeyHash>;
+
     // Loads all three data files; throws std::runtime_error on a loading error,
-    // including duplicate movie IDs (reported with file path and line number).
+    // including duplicate movie IDs, user IDs, or movie/user rating pairs (reported with file path and line number).
     explicit MovieDatabaseMap(const std::string& dataDirectory = "data");
 
-    const std::vector<User>& getUsers() const { return users_; }
+    // Map iteration order is unspecified; user keys are user IDs.
+    const std::unordered_map<int, User>& getUsers() const { return users_; }
     // Iteration order is unspecified; keys are movie IDs.
     const std::unordered_map<int, Movie>& getMovies() const { return movies_; }
-    const std::vector<Rating>& getRatings() const { return ratings_; }
+    const RatingsMap& getRatings() const { return ratings_; }
 
     // Expected constant-time lookup. Returns nullptr when absent. The pointer refers to this database's storage
     // and remains valid until the database is destroyed, assigned, or moved from.
@@ -46,9 +62,9 @@ public:
     const Movie* recommendMovie(int movieId) const;
 
 private:
-    std::vector<User> users_;
+    std::unordered_map<int, User> users_;
     std::unordered_map<int, Movie> movies_;
-    std::vector<Rating> ratings_;
+    RatingsMap ratings_;
     MovieRatingsCSR ratingMatrix_;
     std::unordered_map<int, std::optional<double>> averageRatings_;
 };

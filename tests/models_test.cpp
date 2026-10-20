@@ -68,6 +68,10 @@ int main()
         const MovieDatabaseMap mapStorage(fixture.path.string());
         const IMovieDatabase& mapped = mapStorage;
         assert(mapStorage.getMovies().size() == 3);
+        assert(mapStorage.getUsers().at(1).getZipCode() == "01234");
+        assert(mapStorage.getRatings().at({1, 1}).getRating() == 2);
+        assert(mapStorage.getRatings().at({1, 2}).getRating() == 5);
+        assert(mapStorage.getRatings().at({3952, 1}).getRating() == 1);
         assert(mapped.findMovieById(3952)->getTitle() == "Last");
         assert(!mapped.findMovieById(2));
         assert(!mapped.findMovieById(0));
@@ -155,7 +159,26 @@ int main()
         }
         assert(malformedRejected);
         std::ofstream(fixture.path / "movies.dat", std::ios::trunc).close();
+        std::ofstream(fixture.path / "users.dat") <<
+            "1::F::1::10::01234\n1::M::25::0::12345\n";
+        bool duplicateUserRejected = false;
+        try { MovieDatabaseMap duplicateUser(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            duplicateUserRejected = std::string(error.what()).find("users.dat:2:") != std::string::npos;
+        }
+        assert(duplicateUserRejected);
+        std::ofstream(fixture.path / "users.dat", std::ios::trunc).close();
+        std::ofstream(fixture.path / "ratings.dat") << "1::1::3::0\n1::1::4::1\n";
+        bool duplicateRatingRejected = false;
+        try { MovieDatabaseMap duplicateRating(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            duplicateRatingRejected = std::string(error.what()).find("ratings.dat:2:") != std::string::npos;
+        }
+        assert(duplicateRatingRejected);
+        std::ofstream(fixture.path / "ratings.dat", std::ios::trunc).close();
         const MovieDatabaseMap emptyMap(fixture.path.string());
+        assert(emptyMap.getUsers().empty());
+        assert(emptyMap.getRatings().empty());
         assert(emptyMap.getMovies().empty());
         assert(!emptyMap.findMovieById(1));
         assert(!emptyMap.recommendMovie(1));
@@ -210,6 +233,11 @@ int main()
     assert(database.getUsers().size() == 6040);
     assert(database.getMovies().size() == 3883);
     assert(database.getRatings().size() == 1000209);
+    for (const auto& user : database.getUsers())
+        assert(mapDatabase.getUsers().at(user.getUserId()).toDatLine() == user.toDatLine());
+    for (const auto& rating : database.getRatings())
+        assert(mapDatabase.getRatings().at({rating.getMovieId(), rating.getUserId()}).toDatLine() ==
+               rating.toDatLine());
     // Independently compute online means for every movie in the full dataset.
     std::vector<double> means(3953, 0);
     std::vector<std::size_t> counts(3953, 0);

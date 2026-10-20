@@ -8,71 +8,63 @@
 #include <utility>
 
 namespace {
-// Each model parses its own MovieLens record format.
-template <typename T>
-std::vector<T> loadRecords(const std::string& path)
+// Parse directly into the owning map and report duplicate keys at their source line.
+template <typename Map, typename KeyFunction>
+Map loadRecords(const std::string& path, KeyFunction keyFor)
 {
     std::ifstream input(path);
     if (!input) {
         throw std::runtime_error("Cannot open " + path + ". Run the program from the project directory.");
     }
-
-    std::vector<T> records;
+    Map records;
     std::string line;
     std::size_t lineNumber = 0;
     while (std::getline(input, line)) {
         ++lineNumber;
         try {
-            records.push_back(T::fromDatLine(line));
-        } catch (const std::invalid_argument& error) {
-            throw std::runtime_error(path + ":" + std::to_string(lineNumber) + ": " + error.what());
-        }
-    }
-    if (input.bad()) {
-        throw std::runtime_error("Error reading " + path);
-    }
-    return records;
-}
-
-std::unordered_map<int, Movie> loadMovies(const std::string& path)
-{
-    std::ifstream input(path);
-    if (!input) {
-        throw std::runtime_error("Cannot open " + path + ". Run the program from the project directory.");
-    }
-    std::unordered_map<int, Movie> movies;
-    std::string line;
-    std::size_t lineNumber = 0;
-    while (std::getline(input, line)) {
-        ++lineNumber;
-        try {
-            Movie movie = Movie::fromDatLine(line);
-            const int id = movie.getMovieId();
-            if (!movies.emplace(id, std::move(movie)).second) {
-                throw std::invalid_argument("Duplicate movie ID: " + std::to_string(id));
+            auto record = Map::mapped_type::fromDatLine(line);
+            const auto key = keyFor(record);
+            if (!records.emplace(key, std::move(record)).second) {
+                throw std::invalid_argument("Duplicate record key");
             }
         } catch (const std::invalid_argument& error) {
             throw std::runtime_error(path + ":" + std::to_string(lineNumber) + ": " + error.what());
         }
     }
     if (input.bad()) throw std::runtime_error("Error reading " + path);
-    return movies;
+    return records;
+}
+
+// CSR accepts a vector; this temporary is released once construction completes.
+std::vector<Rating> matrixRatings(const MovieDatabaseMap::RatingsMap& ratings)
+{
+    std::vector<Rating> result;
+    result.reserve(ratings.size());
+    for (const auto& entry : ratings) result.push_back(entry.second);
+    return result;
 }
 
 } // namespace
 
 MovieDatabaseMap::MovieDatabaseMap(const std::string& dataDirectory)
-    : users_(loadRecords<User>((std::filesystem::path(dataDirectory) / "users.dat").string())),
-      movies_(loadMovies((std::filesystem::path(dataDirectory) / "movies.dat").string())),
-      ratings_(loadRecords<Rating>((std::filesystem::path(dataDirectory) / "ratings.dat").string())),
-      ratingMatrix_(ratings_)
+    : users_(loadRecords<std::unordered_map<int, User>>(
+          (std::filesystem::path(dataDirectory) / "users.dat").string(),
+          [](const User& user) { return user.getUserId(); })),
+      movies_(loadRecords<std::unordered_map<int, Movie>>(
+          (std::filesystem::path(dataDirectory) / "movies.dat").string(),
+          [](const Movie& movie) { return movie.getMovieId(); })),
+      ratings_(loadRecords<RatingsMap>(
+          (std::filesystem::path(dataDirectory) / "ratings.dat").string(),
+          [](const Rating& rating) { return RatingKey{rating.getMovieId(), rating.getUserId()}; })),
+      ratingMatrix_(matrixRatings(ratings_))
 {
     struct RatingTotals {
         double sum = 0;
         std::size_t count = 0;
     };
     std::unordered_map<int, RatingTotals> totals;
-    for (const auto& rating : ratings_) {
+    for (const auto& entry : ratings_) {
+        const Rating& rating = entry.second;
         auto& total = totals[rating.getMovieId()];
         total.sum += rating.getRating();
         ++total.count;
