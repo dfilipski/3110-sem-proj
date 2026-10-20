@@ -1,7 +1,7 @@
 #ifndef MOVIE_DATABASE_H
 #define MOVIE_DATABASE_H
 
-#include "Movie.h"
+#include "IMovieDatabase.h"
 #include "MovieRatingsCSR.h"
 #include "Rating.h"
 #include "User.h"
@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-class MovieDatabase {
+class MovieDatabase : public IMovieDatabase {
 public:
     // Loads all three data files; throws std::runtime_error on a loading error.
     explicit MovieDatabase(const std::string& dataDirectory = "data");
@@ -22,21 +22,21 @@ public:
 
     // Returns nullptr when absent. The pointer refers to this database's storage
     // and remains valid until the database is destroyed, assigned, or moved from.
-    const Movie* findMovieById(int movieId) const;
+    const Movie* findMovieById(int movieId) const override;
 
     // Precomputed arithmetic mean, with expected constant-time lookup.
     // Returns no value for an unknown movie or a movie with no ratings.
-    std::optional<double> averageRating(int movieId) const;
+    std::optional<double> averageRating(int movieId) const override;
 
     // Search results are sorted by movie ID; pointer lifetime matches findMovieById.
     // Requires at least one canonical genre and matches all supplied genres.
     // Empty or unknown genres throw std::invalid_argument.
-    std::vector<const Movie*> findMoviesByGenres(const std::vector<std::string>& genres) const;
+    std::vector<const Movie*> findMoviesByGenres(const std::vector<std::string>& genres) const override;
 
     // Inclusive range using unrounded means; excludes unrated movies.
     // Nonfinite bounds, bounds outside [1, 5], or reversed bounds throw
     // std::invalid_argument. Ordering and pointer lifetime match genre search.
-    std::vector<const Movie*> findMoviesByAverageRating(double minimum, double maximum) const;
+    std::vector<const Movie*> findMoviesByAverageRating(double minimum, double maximum) const override;
 
     // Highest cosine similarity of movie rating vectors; excludes the input movie.
     // Ties choose the smaller movie ID. Returns nullptr for an unknown ID or

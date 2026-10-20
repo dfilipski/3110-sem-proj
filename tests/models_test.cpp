@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <type_traits>
 
 template <typename F>
 void rejects(F action)
@@ -36,6 +37,12 @@ std::size_t checkFile(const char* path)
     return count;
 }
 
+static_assert(std::is_abstract<IMovieDatabase>::value, "The query interface must be abstract");
+static_assert(std::has_virtual_destructor<IMovieDatabase>::value,
+              "The interface must support polymorphic destruction");
+static_assert(!std::is_abstract<MovieDatabase>::value,
+              "MovieDatabase must implement every interface method");
+
 int main()
 {
     // A separate dataset gives exact averages and explicit unrated/missing cases.
@@ -53,7 +60,8 @@ int main()
             "3952::Last::Drama|Comedy\n3::Unrated::Comedy\n1::First::Comedy\n";
         std::ofstream(fixture.path / "ratings.dat") <<
             "1::1::2::0\n2::1::5::0\n1::3952::1::0\n";
-        const MovieDatabase small(fixture.path.string());
+        const MovieDatabase storage(fixture.path.string());
+        const IMovieDatabase& small = storage;
         assert(small.averageRating(1) == 3.5);
         assert(small.averageRating(3952) == 1.0);
         assert(!small.averageRating(3));
