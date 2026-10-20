@@ -35,15 +35,6 @@ Map loadRecords(const std::string& path, KeyFunction keyFor)
     return records;
 }
 
-// CSR accepts a vector; this temporary is released once construction completes.
-std::vector<Rating> matrixRatings(const MovieDatabaseMap::RatingsMap& ratings)
-{
-    std::vector<Rating> result;
-    result.reserve(ratings.size());
-    for (const auto& entry : ratings) result.push_back(entry.second);
-    return result;
-}
-
 } // namespace
 
 MovieDatabaseMap::MovieDatabaseMap(const std::string& dataDirectory)
@@ -55,8 +46,7 @@ MovieDatabaseMap::MovieDatabaseMap(const std::string& dataDirectory)
           [](const Movie& movie) { return movie.getMovieId(); })),
       ratings_(loadRecords<RatingsMap>(
           (std::filesystem::path(dataDirectory) / "ratings.dat").string(),
-          [](const Rating& rating) { return RatingKey{rating.getMovieId(), rating.getUserId()}; })),
-      ratingMatrix_(matrixRatings(ratings_))
+          [](const Rating& rating) { return RatingKey{rating.getMovieId(), rating.getUserId()}; }))
 {
     struct RatingTotals {
         double sum = 0;
@@ -89,24 +79,6 @@ const Movie* MovieDatabaseMap::findMovieById(int movieId) const
 {
     const auto movie = movies_.find(movieId);
     return movie == movies_.end() ? nullptr : &movie->second;
-}
-
-const Movie* MovieDatabaseMap::recommendMovie(int movieId) const
-{
-    if (!findMovieById(movieId)) return nullptr;
-    const Movie* best = nullptr;
-    double bestSimilarity = 0;
-    for (const auto& entry : movies_) {
-        const Movie& movie = entry.second;
-        if (movie.getMovieId() == movieId) continue;
-        const double similarity = ratingMatrix_.cosineSimilarity(movieId, movie.getMovieId());
-        if (similarity > bestSimilarity ||
-            (best && similarity == bestSimilarity && movie.getMovieId() < best->getMovieId())) {
-            best = &movie;
-            bestSimilarity = similarity;
-        }
-    }
-    return best;
 }
 
 std::vector<const Movie*> MovieDatabaseMap::findMoviesByGenres(const std::vector<std::string>& genres) const

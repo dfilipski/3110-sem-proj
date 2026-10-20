@@ -2,7 +2,6 @@
 #define MOVIE_DATABASE_MAP_H
 
 #include "IMovieDatabase.h"
-#include "MovieRatingsCSR.h"
 #include "Rating.h"
 #include "User.h"
 
@@ -56,16 +55,11 @@ public:
     // std::invalid_argument. Ordering and pointer lifetime match genre search.
     std::vector<const Movie*> findMoviesByAverageRating(double minimum, double maximum) const override;
 
-    // Highest cosine similarity of movie rating vectors; excludes the input movie.
-    // Ties choose the smaller movie ID. Returns nullptr for an unknown ID or
-    // when no other movie shares any ratings. Pointer lifetime matches findMovieById.
-    const Movie* recommendMovie(int movieId) const;
 
 private:
     std::unordered_map<int, User> users_;
     std::unordered_map<int, Movie> movies_;
     RatingsMap ratings_;
-    MovieRatingsCSR ratingMatrix_;
     std::unordered_map<int, std::optional<double>> averageRatings_;
 };
 

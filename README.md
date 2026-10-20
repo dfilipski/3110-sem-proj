@@ -1,7 +1,7 @@
-# Movie Search and Recommendation
+# Movie Search
 
 A C++17 command-line program for exploring the MovieLens 1M dataset. Look up a
-movie and get a similar recommendation, find movies that share selected genres,
+movie by ID, find movies that share selected genres,
 or search by average user rating.
 
 ## Requirements
@@ -46,7 +46,7 @@ The dataset loads once at startup. The program displays the loaded record counts
 and presents this menu:
 
 ```text
-1. Find a movie by ID and recommend another
+1. Find a movie by ID
 2. Search by genre
 3. Search by average rating
 0. Exit
@@ -55,14 +55,13 @@ and presents this menu:
 After each search, the menu appears again. Choose `0` to quit. End-of-file also
 exits cleanly (Ctrl-D on macOS/Linux). Invalid input prompts you to try again.
 
-### 1. Movie lookup and recommendation
+### 1. Movie lookup
 
 Enter a whole-number movie ID between **1 and 3952**. Movie IDs contain gaps, so
 some IDs within that range have no matching movie.
 
-The program displays the movie's ID, full title, genres, and average user rating,
-then recommends a similar movie when one is available. Movies without ratings
-show a message instead of an average.
+The program displays the movie's ID, full title, genres, and average user rating.
+Movies without ratings show a message instead of an average.
 
 For example, to look up movie `1` and then exit:
 
@@ -106,25 +105,6 @@ including the ID, full title, genres, and average rating when available. A messa
 indicates when there are no matches. Large searches can produce substantial
 terminal output.
 
-## How recommendations work
-
-Each movie is represented by a sparse vector of user ratings. The program uses
-cosine similarity to compare the selected movie with other movies:
-
-```text
-similarity(A, B) = dot(A, B) / (norm(A) * norm(B))
-```
-
-Missing ratings count as zero for this calculation. Norms use each movie's full
-rating vector, rather than only users who rated both movies. The sparse matrix
-uses compressed sparse row (CSR) storage to avoid a dense movie-by-user matrix.
-
-The recommendation excludes the selected movie and requires positive similarity.
-If two candidates have equal similarity, the smaller movie ID wins. Unknown
-movies or movies with no positive candidate produce no recommendation. This is
-movie-to-movie similarity based on raw ratings, rather than a personalized
-recommendation for an individual user.
-
 ## Dataset
 
 The supplied MovieLens 1M files contain:
@@ -143,7 +123,7 @@ file path and line number.
 
 The current implementation is tailored to MovieLens 1M: movie IDs range from
 1–3952 and user IDs from 1–6040. Replacing the files with another dataset may
-require changes to validation, matrix dimensions, prompts, and tests. Preserve
+require changes to validation, prompts, and tests. Preserve
 the supplied data files when developing; use separate fixtures for test cases.
 
 ## Project structure
@@ -155,9 +135,8 @@ the supplied data files when developing; use separate fixtures for test cases.
 | `src/User.h`, `src/User.cpp` | User records and categorical descriptions |
 | `src/Rating.h`, `src/Rating.cpp` | Rating records |
 | `src/DataRecord.h` | Shared delimiter splitting and strict integer parsing |
-| `src/MovieDatabase.h`, `src/MovieDatabase.cpp` | Dataset loading, cached averages, searches, and recommendations |
-| `src/MovieRatingsCSR.h`, `src/MovieRatingsCSR.cpp` | Sparse ratings matrix and cosine similarity |
-| `tests/models_test.cpp` | Model, search, recommendation, and dataset integration tests |
+| `src/MovieDatabase.h`, `src/MovieDatabase.cpp` | Dataset loading, cached averages, searches |
+| `tests/models_test.cpp` | Model, search, and dataset integration tests |
 | `Makefile` | Application and test build targets |
 | `data/` | MovieLens source data |
 | `build/` | Generated executables, object files, and dependency files |
@@ -170,7 +149,7 @@ make test
 
 This builds and runs `build/models_test`. Tests cover record validation,
 serialization round trips across the full dataset, rating averages, genre and
-rating searches, sparse similarity calculations, and recommendations. Small
+rating searches. Small
 synthetic datasets cover edge cases without editing the supplied files.
 
 Tests use `assert`; do not compile them with `-DNDEBUG`. For CLI changes, also
