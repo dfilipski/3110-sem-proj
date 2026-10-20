@@ -4,7 +4,7 @@ CXXFLAGS = -std=c++17 -Wall -Wextra -g
 
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/main
-MODEL_SOURCES = src/Movie.cpp src/Rating.cpp src/User.cpp src/MovieDatabase.cpp src/MovieRatingsCSR.cpp
+MODEL_SOURCES = src/Movie.cpp src/Rating.cpp src/User.cpp src/MovieDatabase.cpp src/MovieDatabaseMap.cpp src/MovieRatingsCSR.cpp
 SOURCES = src/main.cpp $(MODEL_SOURCES)
 OBJECTS = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 TEST_OBJECT = $(BUILD_DIR)/models_test.o

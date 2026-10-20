@@ -1,5 +1,6 @@
 #include "Movie.h"
 #include "MovieDatabase.h"
+#include "MovieDatabaseMap.h"
 #include "Rating.h"
 #include "User.h"
 #include <cassert>
@@ -43,6 +44,9 @@ static_assert(std::has_virtual_destructor<IMovieDatabase>::value,
 static_assert(!std::is_abstract<MovieDatabase>::value,
               "MovieDatabase must implement every interface method");
 
+static_assert(!std::is_abstract<MovieDatabaseMap>::value,
+              "MovieDatabaseMap must implement every interface method");
+
 int main()
 {
     // A separate dataset gives exact averages and explicit unrated/missing cases.
@@ -61,6 +65,35 @@ int main()
         std::ofstream(fixture.path / "ratings.dat") <<
             "1::1::2::0\n2::1::5::0\n1::3952::1::0\n";
         const MovieDatabase storage(fixture.path.string());
+        const MovieDatabaseMap mapStorage(fixture.path.string());
+        const IMovieDatabase& mapped = mapStorage;
+        assert(mapStorage.getMovies().size() == 3);
+        assert(mapped.findMovieById(3952)->getTitle() == "Last");
+        assert(!mapped.findMovieById(2));
+        assert(!mapped.findMovieById(0));
+        assert(!mapped.findMovieById(3953));
+        assert(mapped.averageRating(1) == 3.5);
+        assert(!mapped.averageRating(3));
+        assert(!mapped.averageRating(2));
+        const auto mapComedy = mapped.findMoviesByGenres({"Comedy"});
+        assert(mapComedy.size() == 3 && mapComedy[0]->getMovieId() == 1 &&
+               mapComedy[1]->getMovieId() == 3 && mapComedy[2]->getMovieId() == 3952);
+        assert(mapComedy[0] == mapped.findMovieById(1));
+        assert(mapped.findMoviesByGenres({"Comedy", "Drama"}).size() == 1);
+        assert(mapped.findMoviesByGenres({"Action"}).empty());
+        const auto mapRated = mapped.findMoviesByAverageRating(1, 5);
+        assert(mapRated.size() == 2 && mapRated[0]->getMovieId() == 1 &&
+               mapRated[1]->getMovieId() == 3952);
+        rejects([&] { mapped.findMoviesByGenres({}); });
+        rejects([&] { mapped.findMoviesByGenres({"Unknown"}); });
+        rejects([&] { mapped.findMoviesByAverageRating(4, 3); });
+        rejects([&] { mapped.findMoviesByAverageRating(0, 5); });
+        rejects([&] { mapped.findMoviesByAverageRating(1, 6); });
+        rejects([&] { mapped.findMoviesByAverageRating(1, std::numeric_limits<double>::infinity()); });
+        rejects([&] { mapped.findMoviesByAverageRating(std::numeric_limits<double>::quiet_NaN(), 5); });
+        assert(mapStorage.recommendMovie(1) == mapped.findMovieById(3952));
+        assert(!mapStorage.recommendMovie(3));
+        assert(!mapStorage.recommendMovie(2));
         const IMovieDatabase& small = storage;
         assert(small.averageRating(1) == 3.5);
         assert(small.averageRating(3952) == 1.0);
@@ -96,6 +129,37 @@ int main()
         assert(empty.findMoviesByAverageRating(1, 5).empty());
         assert(!empty.averageRating(1));
         assert(!empty.averageRating(3952));
+        const MovieDatabaseMap emptyRatings(fixture.path.string());
+        assert(!emptyRatings.averageRating(1));
+        assert(!emptyRatings.recommendMovie(1));
+        assert(emptyRatings.findMoviesByAverageRating(1, 5).empty());
+
+        // Identical candidate vectors tie; smaller ID wins regardless of file order.
+        std::ofstream(fixture.path / "ratings.dat") <<
+            "1::1::4::0\n1::3::4::0\n1::3952::4::0\n";
+        const MovieDatabaseMap tied(fixture.path.string());
+        assert(tied.recommendMovie(1) == tied.findMovieById(3));
+        std::ofstream(fixture.path / "ratings.dat", std::ios::trunc).close();
+        std::ofstream(fixture.path / "movies.dat") << "1::First::Comedy\n1::Duplicate::Drama\n";
+        bool duplicateRejected = false;
+        try { MovieDatabaseMap duplicate(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            duplicateRejected = std::string(error.what()).find("movies.dat:2:") != std::string::npos;
+        }
+        assert(duplicateRejected);
+        std::ofstream(fixture.path / "movies.dat") << "1::First::Comedy\ninvalid\n";
+        bool malformedRejected = false;
+        try { MovieDatabaseMap malformed(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            malformedRejected = std::string(error.what()).find("movies.dat:2:") != std::string::npos;
+        }
+        assert(malformedRejected);
+        std::ofstream(fixture.path / "movies.dat", std::ios::trunc).close();
+        const MovieDatabaseMap emptyMap(fixture.path.string());
+        assert(emptyMap.getMovies().empty());
+        assert(!emptyMap.findMovieById(1));
+        assert(!emptyMap.recommendMovie(1));
+        assert(emptyMap.findMoviesByGenres({"Comedy"}).empty());
     }
     const auto user = User::fromDatLine("1::F::1::10::01234\r");
     assert(user.getUserId() == 1 && user.getGender() == 'F');
@@ -137,6 +201,11 @@ int main()
     assert(MovieRatingsCSR({}).cosineSimilarity(1, 1) == 0);
     rejects([] { MovieRatingsCSR duplicate({Rating(1, 1, 3, 0), Rating(1, 1, 4, 1)}); });
 
+    const MovieDatabaseMap mapDatabase;
+    assert(mapDatabase.getMovies().size() == 3883);
+    assert(mapDatabase.getUsers().size() == 6040);
+    assert(mapDatabase.getRatings().size() == 1000209);
+    assert(!mapDatabase.findMovieById(91));
     const MovieDatabase database;
     assert(database.getUsers().size() == 6040);
     assert(database.getMovies().size() == 3883);
@@ -150,6 +219,8 @@ int main()
     }
     for (const auto& m : database.getMovies()) {
         const int id = m.getMovieId();
+        assert(mapDatabase.findMovieById(id)->toDatLine() == m.toDatLine());
+        assert(mapDatabase.averageRating(id) == database.averageRating(id));
         const auto average = database.averageRating(id);
         assert(average.has_value() == (counts[id] != 0));
         if (average) assert(std::abs(*average - means[id]) < 1e-12);
@@ -186,6 +257,7 @@ int main()
         }
     }
     assert(recommendation->getMovieId() == bestId);
+    assert(mapDatabase.recommendMovie(1)->getMovieId() == bestId);
     bool missingDirectory = false;
     try {
         MovieDatabase missing("data/missing-directory");
