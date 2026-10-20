@@ -40,6 +40,29 @@ MovieDatabase::MovieDatabase(const std::string& dataDirectory)
       ratings_(loadRecords<Rating>((std::filesystem::path(dataDirectory) / "ratings.dat").string())),
       ratingMatrix_(ratings_)
 {
+    struct RatingTotals {
+        double sum = 0;
+        std::size_t count = 0;
+    };
+    std::unordered_map<int, RatingTotals> totals;
+    for (const auto& rating : ratings_) {
+        auto& total = totals[rating.getMovieId()];
+        total.sum += rating.getRating();
+        ++total.count;
+    }
+    for (const auto& movie : movies_) {
+        const int id = movie.getMovieId();
+        const auto total = totals.find(id);
+        averageRatings_[id] = total == totals.end()
+            ? std::nullopt
+            : std::optional<double>(total->second.sum / total->second.count);
+    }
+}
+
+std::optional<double> MovieDatabase::averageRating(int movieId) const
+{
+    const auto average = averageRatings_.find(movieId);
+    return average == averageRatings_.end() ? std::nullopt : average->second;
 }
 
 const Movie* MovieDatabase::findMovieById(int movieId) const

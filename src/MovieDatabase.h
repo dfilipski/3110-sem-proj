@@ -7,6 +7,8 @@
 #include "User.h"
 
 #include <string>
+#include <optional>
+#include <unordered_map>
 #include <vector>
 
 class MovieDatabase {
@@ -22,6 +24,10 @@ public:
     // and remains valid until the database is destroyed, assigned, or moved from.
     const Movie* findMovieById(int movieId) const;
 
+    // Precomputed arithmetic mean, with expected constant-time lookup.
+    // Returns no value for an unknown movie or a movie with no ratings.
+    std::optional<double> averageRating(int movieId) const;
+
     // Highest cosine similarity of movie rating vectors; excludes the input movie.
     // Ties choose the smaller movie ID. Returns nullptr for an unknown ID or
     // when no other movie shares any ratings. Pointer lifetime matches findMovieById.
@@ -32,6 +38,7 @@ private:
     std::vector<Movie> movies_;
     std::vector<Rating> ratings_;
     MovieRatingsCSR ratingMatrix_;
+    std::unordered_map<int, std::optional<double>> averageRatings_;
 };
 
 #endif

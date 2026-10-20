@@ -4,6 +4,8 @@
 #include "User.h"
 #include <cassert>
 #include <cmath>
+#include <chrono>
+#include <filesystem>
 #include <limits>
 #include <fstream>
 #include <iostream>
@@ -36,6 +38,35 @@ std::size_t checkFile(const char* path)
 
 int main()
 {
+    // A separate dataset gives exact averages and explicit unrated/missing cases.
+    struct TemporaryDataset {
+        std::filesystem::path path = std::filesystem::temp_directory_path() /
+            ("movie-average-test-" + std::to_string(
+                std::chrono::steady_clock::now().time_since_epoch().count()));
+        TemporaryDataset() { std::filesystem::create_directory(path); }
+        ~TemporaryDataset() { std::filesystem::remove_all(path); }
+    };
+    {
+        const TemporaryDataset fixture;
+        std::ofstream(fixture.path / "users.dat") << "1::F::1::10::01234\n2::M::25::0::12345\n";
+        std::ofstream(fixture.path / "movies.dat") <<
+            "3952::Last::Drama\n3::Unrated::Comedy\n1::First::Comedy\n";
+        std::ofstream(fixture.path / "ratings.dat") <<
+            "1::1::2::0\n2::1::5::0\n1::3952::1::0\n";
+        const MovieDatabase small(fixture.path.string());
+        assert(small.averageRating(1) == 3.5);
+        assert(small.averageRating(3952) == 1.0);
+        assert(!small.averageRating(3));
+        assert(!small.averageRating(2));
+        assert(!small.averageRating(-1));
+        assert(!small.averageRating(0));
+        assert(!small.averageRating(3953));
+        // Empty ratings must leave every movie without an average.
+        std::ofstream(fixture.path / "ratings.dat", std::ios::trunc).close();
+        const MovieDatabase empty(fixture.path.string());
+        assert(!empty.averageRating(1));
+        assert(!empty.averageRating(3952));
+    }
     const auto user = User::fromDatLine("1::F::1::10::01234\r");
     assert(user.getUserId() == 1 && user.getGender() == 'F');
     assert(user.getAge() == 1 && user.getAgeDescription() == "Under 18");
@@ -80,6 +111,20 @@ int main()
     assert(database.getUsers().size() == 6040);
     assert(database.getMovies().size() == 3883);
     assert(database.getRatings().size() == 1000209);
+    // Independently compute online means for every movie in the full dataset.
+    std::vector<double> means(3953, 0);
+    std::vector<std::size_t> counts(3953, 0);
+    for (const auto& r : database.getRatings()) {
+        const int id = r.getMovieId();
+        means[id] += (r.getRating() - means[id]) / ++counts[id];
+    }
+    for (const auto& m : database.getMovies()) {
+        const int id = m.getMovieId();
+        const auto average = database.averageRating(id);
+        assert(average.has_value() == (counts[id] != 0));
+        if (average) assert(std::abs(*average - means[id]) < 1e-12);
+    }
+    assert(!database.averageRating(91));
     const Movie* found = database.findMovieById(1);
     assert(found && found->getTitle() == "Toy Story (1995)");
     assert(database.findMovieById(3952));

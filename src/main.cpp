@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <string>
 
@@ -44,6 +45,14 @@ int main()
             std::cout << genres[i];
         }
         std::cout << '\n';
+
+        const auto average = database.averageRating(movieId);
+        if (average) {
+            std::cout << "Average user rating: " << std::fixed << std::setprecision(2)
+                      << *average << " / 5\n";
+        } else {
+            std::cout << "No ratings available.\n";
+        }
 
         const Movie* recommendation = database.recommendMovie(movieId);
         if (recommendation) {
