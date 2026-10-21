@@ -2,6 +2,7 @@
 /build/
 *.o
 *.dSYM/
+tmp/
 
 # macOS metadata
 .DS_Store
