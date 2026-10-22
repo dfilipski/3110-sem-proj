@@ -173,7 +173,7 @@ exercise interactive input, invalid entries, repeated searches, and EOF.
 Run `make benchmark` to build and run the optimized (`-O2`) benchmark executable.
 It uses separate objects from the application's debug build. With no arguments,
 it runs MovieDatabase, MovieDatabaseMap, and MovieDatabaseTreap in sequence,
-with a blank line between implementations (10 repetitions each, using `data`).
+with a blank line between implementations (100 repetitions each, using `data`).
 To benchmark just one implementation or customize its run:
 
 ```sh
@@ -181,7 +181,7 @@ make build/benchmark
 ./build/benchmark MovieDatabase 100 data
 ```
 
-Arguments are implementation name, positive repetition count (default 10), and
+Arguments are implementation name, positive repetition count (default 100), and
 data directory (default `data`). Run from the repository root. Each repetition
 looks up IDs 0 through 3953, searches each canonical genre plus two genre
 combinations, and searches seven rating ranges including the full range and an

@@ -21,6 +21,7 @@ std::vector<T> loadRecords(const std::string& path)
 
     std::vector<T> records;
     std::unordered_set<std::uint64_t> ratingKeys;
+    std::unordered_set<int> ids;
     std::string line;
     std::size_t lineNumber = 0;
     while (std::getline(input, line)) {
@@ -32,6 +33,13 @@ std::vector<T> loadRecords(const std::string& path)
                                  static_cast<std::uint32_t>(record.getUserId());
                 if (!ratingKeys.insert(key).second)
                     throw std::invalid_argument("Duplicate movie/user rating pair");
+            }
+            if constexpr (std::is_same_v<T, Movie>) {
+                if (!ids.insert(record.getMovieId()).second)
+                    throw std::invalid_argument("Duplicate movie ID");
+            } else if constexpr (std::is_same_v<T, User>) {
+                if (!ids.insert(record.getUserId()).second)
+                    throw std::invalid_argument("Duplicate user ID");
             }
             records.push_back(std::move(record));
         } catch (const std::invalid_argument& error) {

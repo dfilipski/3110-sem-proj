@@ -12,7 +12,9 @@
 
 class MovieDatabase : public IMovieDatabase {
 public:
-    // Loads all three data files; throws std::runtime_error on a loading error.
+    // Loads all three data files; throws std::runtime_error on a loading error,
+    // including duplicate movie IDs, user IDs, or movie/user rating pairs.
+    // Malformed records and duplicates include the file path and line number.
     explicit MovieDatabase(const std::string& dataDirectory = "data");
 
     const std::vector<User>& getUsers() const { return users_; }

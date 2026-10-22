@@ -258,6 +258,12 @@ int main()
             treapduplicateRejected = std::string(error.what()).find("movies.dat:2:") != std::string::npos;
         }
         assert(treapduplicateRejected);
+        bool duplicateVectorMovieRejected = false;
+        try { MovieDatabase invalid(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            duplicateVectorMovieRejected = std::string(error.what()).find("movies.dat:2:") != std::string::npos;
+        }
+        assert(duplicateVectorMovieRejected);
         std::ofstream(fixture.path / "movies.dat") << "1::First::Comedy\ninvalid\n";
         bool malformedRejected = false;
         try { MovieDatabaseMap malformed(fixture.path.string()); }
@@ -286,6 +292,12 @@ int main()
             treapduplicateUserRejected = std::string(error.what()).find("users.dat:2:") != std::string::npos;
         }
         assert(treapduplicateUserRejected);
+        bool duplicateVectorUserRejected = false;
+        try { MovieDatabase invalid(fixture.path.string()); }
+        catch (const std::runtime_error& error) {
+            duplicateVectorUserRejected = std::string(error.what()).find("users.dat:2:") != std::string::npos;
+        }
+        assert(duplicateVectorUserRejected);
         std::ofstream(fixture.path / "users.dat", std::ios::trunc).close();
         std::ofstream(fixture.path / "ratings.dat") << "1::1::3::0\n1::1::4::1\n";
         bool duplicateRatingRejected = false;

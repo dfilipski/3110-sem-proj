@@ -2,9 +2,10 @@
 
 ## Project and scope
 
-This is a C++17 command-line movie recommendation program using the MovieLens
-1M dataset. It loads users, movies, and ratings, accepts a movie ID, displays
-that movie, and recommends another movie using cosine similarity.
+This is a C++17 command-line movie search program using the MovieLens
+1M dataset. It loads users, movies, and ratings and supports movie lookup,
+matching all selected genres, and inclusive average-rating searches. Vector,
+unordered-map, and treap implementations share the IMovieDatabase query interface.
 
 Keep changes focused on the requested feature. Follow the existing small-class,
 standard-library approach; avoid adding frameworks, dependencies, or broad
@@ -19,7 +20,7 @@ Run commands from the repository root; data paths are relative to that directory
 make                 # Build build/main with clang++, C++17, -Wall -Wextra -g
 make test            # Build and run build/models_test
 make run             # Run the interactive program
-printf '1\n' | ./build/main  # Smoke-test a movie lookup and recommendation
+printf '1\n1\n0\n' | ./build/main  # Smoke-test a movie lookup and exit
 ```
 
 - For C++ changes, run `make` and `make test`; resolve new compiler warnings.
@@ -36,16 +37,18 @@ printf '1\n' | ./build/main  # Smoke-test a movie lookup and recommendation
 ## Where features belong
 
 - `src/main.cpp`: interactive prompts, complete-line input validation, display,
-  and top-level exception handling. Keep recommendation and data logic outside it.
+  and top-level exception handling. Keep search and data logic outside it.
 - `src/Movie.h/.cpp`, `src/User.h/.cpp`, `src/Rating.h/.cpp`: validated record
   types, MovieLens parsing/serialization, and record-specific helpers.
 - `src/DataRecord.h`: shared delimiter splitting and strict integer parsing.
-- `src/MovieDatabase.h/.cpp`: dataset loading, movie lookup, and recommendation
-  selection. Its constructor accepts a data directory, defaulting to `data`.
-- `src/MovieRatingsCSR.h/.cpp`: sparse movie-by-user ratings, row norms, and
-  cosine similarity calculations.
-- `tests/models_test.cpp`: model validation, full-dataset round trips, sparse
-  matrix cases, and database/recommendation checks.
+- `src/IMovieDatabase.h`: shared query, result ordering, and pointer lifetime contracts.
+- `src/MovieDatabase.h/.cpp`: vector storage, dataset loading, cached averages,
+  and searches. Its constructor accepts a data directory, defaulting to `data`.
+- `src/MovieDatabaseMap.h/.cpp`: unordered-map storage implementing the same queries.
+- `src/MovieDatabaseTreap.h/.cpp`: composite-key treap with subtree search metadata.
+- `src/benchmark.cpp`: comparable query workloads across all three implementations.
+- `tests/models_test.cpp`: model validation, full-dataset round trips, search
+  edge cases, implementation comparisons, and treap invariants.
 - `data/*.dat`: source datasets. Preserve them; use small synthetic records or
   separate temporary fixtures for tests instead of editing the supplied data.
 - `build/`, object files, and `.dSYM/` are generated output; do not commit them.
@@ -66,22 +69,26 @@ printf '1\n' | ./build/main  # Smoke-test a movie lookup and recommendation
   and, for malformed records, line number.
 - Existing dataset tests expect 6040 users, 3883 movies, and 1000209 ratings.
   If a requested feature generalizes the dataset, update the coupled validation,
-  matrix dimensions, CLI ranges, and tests consistently.
+  benchmark ID ranges, CLI ranges, and tests consistently.
 
-## Recommendation and ownership contracts
+## Search and ownership contracts
 
-- CSR rows correspond to `movieId - 1`; columns correspond to `userId - 1`.
-  Columns within each row are sorted. Duplicate movie/user pairs are rejected.
-- Missing ratings count as zero. Cosine similarity uses full row norms, not
-  norms restricted to common raters. Empty or disjoint rows yield zero.
-- Recommendations exclude the input movie, require positive similarity, and
-  resolve equal scores by choosing the smaller movie ID. Unknown movies or no
-  positive candidate return `nullptr`.
-- Lookup and recommendation pointers refer to database-owned storage. Preserve
-  the lifetime documented in `MovieDatabase.h`; do not return temporary objects
-  or introduce mutations that invalidate pointers without updating the API.
-- The dataset has about one million ratings. Preserve sparse storage and avoid
-  dense movie-by-user matrices or repeated full-rating scans for each candidate.
+- All implementations reject duplicate movie IDs, user IDs, and movie/user
+  rating pairs with file path and line number diagnostics.
+- Average ratings are precomputed arithmetic means of submitted ratings only.
+  Unknown or unrated movies return `std::nullopt`.
+- Genre searches require at least one canonical genre and match all selected
+  genres. Empty or unknown genres throw `std::invalid_argument`.
+- Rating searches use inclusive, unrounded averages and exclude unrated movies.
+  Nonfinite bounds or ranges outside 1 <= minimum <= maximum <= 5 throw
+  `std::invalid_argument`.
+- Search results contain unique movies in ascending movie-ID order. Unknown
+  movie lookups return `nullptr`.
+- Returned pointers refer to database-owned storage and remain valid until the
+  database is destroyed, assigned, or moved from, as documented in IMovieDatabase.
+- The dataset has about one million ratings. Cache averages during construction
+  rather than rescanning ratings for each query. Preserve the distinct storage
+  implementations so their benchmark comparisons remain meaningful.
 
 ## Implementation and testing style
 
@@ -93,6 +100,6 @@ cases in headers when adding APIs.
 
 For behavior changes, add focused regression cases to the existing tests. Prefer
 small synthetic inputs for algorithm edge cases and an independent expected
-result for recommendation math. Cover relevant empty inputs, missing IDs,
-malformed records, ties, and boundary values without duplicating implementation
+result for average-rating math. Cover relevant empty inputs, missing IDs,
+malformed records, duplicate IDs, and boundary values without duplicating implementation
 logic in tests. Retain the existing full-dataset integration checks.
