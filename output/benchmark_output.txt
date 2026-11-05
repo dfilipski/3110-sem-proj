@@ -1,0 +1,20 @@
+Implementation: MovieDatabase, rounds: 100, data: data
+Construction/loading: 318.661 ms
+findMovieById: 395400 calls, 257.605 ms total, 651.504 ns/call, checksum=778894830
+averageRating: 395400 calls, 0.731 ms total, 1.850 ns/call, checksum=1212336622294
+findMoviesByGenres: 2000 calls, 35.687 ms total, 17843.312 ns/call, checksum=1306233000
+findMoviesByAverageRating: 700 calls, 10.000 ms total, 14285.417 ns/call, checksum=1761644727
+
+Implementation: MovieDatabaseMap, rounds: 100, data: data
+Construction/loading: 328.180 ms
+findMovieById: 395400 calls, 0.719 ms total, 1.819 ns/call, checksum=778894830
+averageRating: 395400 calls, 0.690 ms total, 1.744 ns/call, checksum=1212336622294
+findMoviesByGenres: 2000 calls, 38.969 ms total, 19484.417 ns/call, checksum=1306233000
+findMoviesByAverageRating: 700 calls, 14.127 ms total, 20181.904 ns/call, checksum=1761644727
+
+Implementation: MovieDatabaseTreap, rounds: 100, data: data
+Construction/loading: 299.993 ms
+findMovieById: 395400 calls, 7.236 ms total, 18.301 ns/call, checksum=778894830
+averageRating: 395400 calls, 0.685 ms total, 1.733 ns/call, checksum=1212336622294
+findMoviesByGenres: 2000 calls, 19.751 ms total, 9875.666 ns/call, checksum=1306233000
+findMoviesByAverageRating: 700 calls, 9.429 ms total, 13470.596 ns/call, checksum=1761644727
