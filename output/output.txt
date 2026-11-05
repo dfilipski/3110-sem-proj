@@ -1,0 +1,19 @@
+./build/main
+Loaded 6040 users, 3883 movies, and 1000209 ratings.
+
+1. Find a movie by ID
+2. Search by genre
+3. Search by average rating
+0. Exit
+Choose an option: Enter a movie ID (1-3952): 
+Movie ID: 293
+Title: Professional, The (a.k.a. Leon: The Professional) (1994)
+Genres: Crime, Drama, Romance, Thriller
+Average user rating: 4.11 / 5
+
+1. Find a movie by ID
+2. Search by genre
+3. Search by average rating
+0. Exit
+Choose an option: 
+Goodbye.
